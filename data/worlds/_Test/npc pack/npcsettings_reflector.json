@@ -1,0 +1,17 @@
+{
+	"style" : "groupbox",
+	"title" : "Reflector Settings",
+	"layout": [	
+		{
+			"control": "spinBox",
+			"type": "int",
+			"name": "angle",
+			"title": "Angle",
+			"tooltip": "What should the angle the reflector be?",
+			"value-default": 0,
+			"value-min": -360,
+			"value-max": 360,
+			"single-step": 1
+		}	
+	]
+}

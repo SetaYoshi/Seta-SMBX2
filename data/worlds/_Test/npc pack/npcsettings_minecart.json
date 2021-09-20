@@ -1,0 +1,49 @@
+{
+	"style" : "groupbox",
+	"title" : "Minecart Settings",
+	"layout": [
+		{
+			"control": "checkbox",
+			"name": "allowjump",
+			"title": "Allow Jumping Out",
+			"tooltip": "If checked, the player can jump ot of the minecart by pressing jump",
+			"text-visible": false,
+			"value-default": false
+		},			
+	    {
+			"control": "spinBox",
+			"type": "double",
+			"name": "speed",
+			"title": "Speed",
+			"tooltip": "The speed of the minecart",
+			"value-default": 6,
+			"value-min": 1,
+			"value-max": 99,
+			"single-step": 0.01
+		},		
+		{
+			"control": "checkbox",
+			"name": "scanPlayer",
+			"title": "Allow Players",
+			"tooltip": "If checked, the wormhole will scan for players to be warped",
+			"text-visible": false,
+			"value-default": true
+		},			
+		{
+			"control": "checkbox",
+			"name": "scanNPC",
+			"title": "Allow NPCs",
+			"tooltip": "If checked, the wormhole will scan for NPCs to be warped",
+			"text-visible": false,
+			"value-default": true
+		},		
+		{
+			"control": "checkbox",
+			"name": "scanBlock",
+			"title": "Allow Blocks",
+			"tooltip": "If checked, the wormhole will scan for blocks to be warped",
+			"text-visible": false,
+			"value-default": false
+		}			
+	]
+}

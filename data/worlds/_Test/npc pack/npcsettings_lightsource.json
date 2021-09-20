@@ -1,0 +1,26 @@
+{
+	"style" : "groupbox",
+	"title" : "Light Source Settings",
+	"layout": [	
+		{
+			"control": "comboBox",
+			"name": "color",
+			"title": "Color",
+			"type": "int",
+			"tooltip": "What should the color output of the light be?",
+			"value-default": 0,
+			"elements": ["White", "Red", "Orange", "Yellow", "Green", "Blue", "Purple"]
+		},
+		{
+			"control": "spinBox",
+			"type": "int",
+			"name": "angle",
+			"title": "Angle",
+			"tooltip": "What should the angle output of the light be?",
+			"value-default": 0,
+			"value-min": -360,
+			"value-max": 360,
+			"single-step": 1
+		}	
+	]
+}

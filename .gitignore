@@ -1,0 +1,9 @@
+/*
+!.gitignore
+
+!/data/
+/data/*
+
+!/data/worlds/
+/data/worlds/*
+!/data/worlds/_Test/
