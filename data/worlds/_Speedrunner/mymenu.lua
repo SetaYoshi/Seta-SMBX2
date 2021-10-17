@@ -3,6 +3,8 @@ local mym  = {}
 local textplus = require("textplus")
 local textfont = textplus.loadFont("textplus/font/6.ini")
 
+local inEpisode = Misc.saveSlot() > 0
+
 -- Data table for settings
 mym.data = {}
 mym.input = {}
@@ -135,7 +137,9 @@ mym.render = function()
 end
 
 mym.register = function(t)
-  table.insert(mym.list, t)
+  if not ((t.episodeBanned and inEpisode) or (t.levelBanned and not inEpisode)) then
+    table.insert(mym.list, t)
+  end
 end
 
 

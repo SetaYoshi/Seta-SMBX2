@@ -6,7 +6,6 @@ local textplus = require("textplus")
 local playerManager = require("playerManager")
 local starcoin = require("npcs/AI/starcoin")
 local savestate = require("savestate")
-local inEditor = Misc.inEditor()
 local inEpisode = Misc.saveSlot() > 0
 
 local function formatTime(t)
@@ -125,15 +124,15 @@ local iIcons = Graphics.loadImage(PATH.."icons.png")
 local iStat = Graphics.loadImage(PATH.."stat.png")
 local textfont = textplus.loadFont("textplus/font/6.ini")
 
-local timerX = {8, 400, 792}
-local timerXSplit = {8, 200, 396}
-local timerPivot = {vector(0, 1), vector(0.5, 1), vector(1, 1)}
+local timerX = {0, 8, 400, 792}
+local timerXSplit = {0, 8, 200, 396}
+local timerPivot = {vector(0, 0), vector(0, 1), vector(0.5, 1), vector(1, 1)}
 local timerSize = {1, 2, 2.5}
 
 local pList = {player, player2}
-local keyname = {"left", "up", "down", "right", "jump", "altJump", "run", "altRun", "pause", "dropItem"}
-local inputX = {8, 310, 612}
-local inputXSplit = {8, 110, 212}
+local keyname = {"left", "up", "down", "right", "jump", "altJump", "run", "altRun", "dropItem", "pause"}
+local inputX = {0, 8, 310, 612}
+local inputXSplit = {0, 8, 110, 212}
 
 local finTypes = {
   [1]  = "Roulette",
@@ -237,10 +236,10 @@ end
 local charNameList = {}
 local costumelist = {"NONE"}
 for k, v in pairs(playerManager.getCharacters()) do
-  charNameList[k] = v.name
+	charNameList[k] = v.name
 	for _, c in ipairs(playerManager.getCostumes(k)) do
-	table.insert(costumelist, c)
-end
+		table.insert(costumelist, c)
+	end
 end
 local function getCharName(id)
   local s = charNameList[id]
@@ -418,37 +417,30 @@ function sectionsplittable(max)
 end
 
 -- Register the menu
-if inEpisode then
-  menu.register{name = "Check Episode PB", type = "submenu", subdata = {suboptionx = 1, suboptiony = 1}, input = epitick, render = epidraw}
-end
+menu.register{name = "Check Episode PB", type = "submenu", subdata = {suboptionx = 1, suboptiony = 1}, input = epitick, render = epidraw, levelBanned = true}
 menu.register{name = "Check Level PB", type = "submenu", subdata = {suboption = 1}, input = logtick, render = logdraw}
-menu.register{name = "Show Clock", type = "toggle", var = "showTimerClock"}
-menu.register{name = "Show Frames", type = "toggle", var = "showTimerFrames"}
-menu.register{name = "Timer Position", type = "list", var = "timerPosition", list = {"LEFT", "CENTER", "RIGHT"}}
-menu.register{name = "Timer Size", type = "list", var = "timerSize", list = {"SMALL", "MEDIUM", "LARGE"}}
-menu.register{name = "Show Inputs", type = "toggle", var = "showInputs"}
-menu.register{name = "Inputs Position", type = "list", var = "inputPosition", list = {"LEFT", "CENTER", "RIGHT"}}
-menu.register{name = "Show Attempts", type = "toggle", var = "showAttempts"}
-menu.register{name = "Attempts Position", type = "list", var = "attemptsPosition", list = {"LEFT", "CENTER", "RIGHT"}}
-menu.register{name = "Show Section Split", type = "list", var = "sectionsplit", list = sectionsplittable(#levelstat)}
-menu.register{name = "Transparent", type = "toggle", var = "transperent"}
 
--- Do not show these options while playing in an episode
-if not inEpisode then
-  menu.register{name = "Enable Popout", type = "toggle", var = "popout"}
-end
+menu.register{name = "Timer Mode", type = "list", var = "timerMode", list = {"Clock", "Frame", "Clock + Frame"}}
+menu.register{name = "Timer Size", type = "list", var = "timerSize", list = {"SMALL", "MEDIUM", "LARGE"}}
+
+menu.register{name = "Position Timer", type = "list", var = "timerPosition", list = {"HIDE", "LEFT", "CENTER", "RIGHT"}}
+menu.register{name = "Position Inputs", type = "list", var = "inputPosition", list = {"HIDE", "LEFT", "CENTER", "RIGHT"}}
+menu.register{name = "Position Attempts", type = "list", var = "attemptsPosition", list = {"HIDE", "LEFT", "CENTER", "RIGHT"}}
+
+menu.register{name = "Show Section Split", type = "list", var = "sectionsplit", list = sectionsplittable(#levelstat)}
+
+menu.register{name = "Transparent", type = "toggle", var = "transperent"}
+menu.register{name = "Enable Popout", type = "toggle", var = "popout", episodeBanned = true}
 menu.register{name = "Print Log", type = "toggle", var = "printlog"}
-if not inEpisode then
-  menu.register{name = "Disable Checkpoints", type = "toggle", var = "disableChecks"}
-	menu.register{name = "Enable Savestate HotKeys", type = "toggle", var = "enablesavestate"}
-	menu.register{name = "Enable Extra Advantage Start Features", type = "toggle", var = "enableas"}
-	menu.register{name = "[AS] P1 Costume", type = "list", var = "asCostume1", list = costumelist}
-	menu.register{name = "[AS] P2 Costume", type = "list", var = "asCostume2", list = costumelist}
-	menu.register{name = "[AS] P1 Reserve Box", type = "numpad", var = "asBox1", min = 0, max = NPC_MAX_ID}
-	menu.register{name = "[AS] P2 Reserve Box", type = "numpad", var = "asBox2", min = 0, max = NPC_MAX_ID}
-	menu.register{name = "[AS] P1 Health", type = "list", var = "asHealth1", list = {"1", "2", "3"}}
-	menu.register{name = "[AS] P2 Health", type = "list", var = "asHealth2", list = {"1", "2", "3"}}
-end
+menu.register{name = "Disable Checkpoints", type = "toggle", var = "disableChecks", episodeBanned = true}
+menu.register{name = "Enable Savestate HotKeys", type = "toggle", var = "enablesavestate", episodeBanned = true}
+menu.register{name = "Enable Extra Advantage Start Features", type = "toggle", var = "enableas", episodeBanned = true}
+menu.register{name = "[AS] P1 Costume", type = "list", var = "asCostume1", list = costumelist, episodeBanned = true}
+menu.register{name = "[AS] P2 Costume", type = "list", var = "asCostume2", list = costumelist, episodeBanned = true}
+menu.register{name = "[AS] P1 Reserve Box", type = "numpad", var = "asBox1", min = 0, max = NPC_MAX_ID, episodeBanned = true}
+menu.register{name = "[AS] P2 Reserve Box", type = "numpad", var = "asBox2", min = 0, max = NPC_MAX_ID, episodeBanned = true}
+menu.register{name = "[AS] P1 Health", type = "list", var = "asHealth1", list = {"1", "2", "3"}, episodeBanned = true}
+menu.register{name = "[AS] P2 Health", type = "list", var = "asHealth2", list = {"1", "2", "3"}, episodeBanned = true}
 
 -- Check if the episode or level has a custom finish
 local file = io.open(Misc.episodePath().."custom_finish.spddat", "r") -- r read mode
@@ -738,25 +730,55 @@ function lib.onDraw()
 
 end
 
-
-
-local function renderInputs(p, x, y)
-	local opacity = 1
-	if settings.transperent then opacity = 0.5 end
-	for k, v in ipairs(keyname) do
-		if p.rawKeys[v] then
-			Graphics.draw{image = iInputs, type = RTYPE_IMAGE, x = x + 18*(k - 1), y = y, priority = 9.9, sourceX = 16*(k - 1), sourceWidth = 16, opacity = opacity, priority = 9.99}
-		end
+local function formatOut(n)
+	if settings.timerMode == 1 then
+		return formatTime(n)
+	elseif settings.timerMode == 2 then
+		return tostring(n)
+	elseif settings.timerMode == 3 then
+		return formatTime(n).." ["..n.."]"
 	end
 end
+
+local function formatFin(obj, diff)
+	local sym = signSym(diff)
+
+	if diff < 0 then
+		obj.text = "<color rainbow>"..obj.text.."</color>"
+	elseif diff > 0 then
+		obj.color = Color.red
+	else
+		obj.color = Color.gray
+	end
+
+	obj.text = obj.text.." <color white>"..sym..formatOut(diff).."</color>"
+end
+
+local function renderInputs(p, x, y)
+	for k, v in ipairs(keyname) do
+		local opacity = 1
+		local sourceX = k - 1
+		local sourceY = 16
+		if settings.transperent then opacity = 0.5 end
+		if p.character == CHARACTER_PEACH and v == "altJump" then
+			sourceX = 10
+		end
+		if not p.rawKeys[v] then
+			opacity = opacity*0.25
+			sourceY = 0
+		end
+		Graphics.draw{image = iInputs, type = RTYPE_IMAGE, x = x + 18*(k - 1), y = y, priority = 9.9, sourceX = 16*sourceX, sourceY = sourceY, sourceHeight = 16, sourceWidth = 16, opacity = opacity, priority = 9.99}
+	end
+end
+
 
 -- Draw the timer and inputs
 function lib.onCameraDraw(idx)
 	-- These are the objects that will be printed onscreen
 	local opacity = 1
-	local timerObj = {x = timerX[settings.timerPosition], y = 592, pivot = timerPivot[settings.timerPosition], priority = 9.99, font = textfont, xscale = timerSize[settings.timerSize], yscale = timerSize[settings.timerSize], color = Color.white, height = timerSize[settings.timerSize]*12}
-  local attemptObj = {text = "#"..speeddata.attempt, x = timerX[settings.attemptsPosition], y = 592, pivot = timerPivot[settings.attemptsPosition], priority = 9.99, font = textfont, xscale = 2, yscale = 2, color = Color.white}
-  local inputObj = {x = inputX[settings.inputPosition], y = 576}
+	local timerObj = {x = timerX[settings.timerPosition], pivot = timerPivot[settings.timerPosition], priority = 9.99, font = textfont, xscale = timerSize[settings.timerSize], yscale = timerSize[settings.timerSize], color = Color.white, height = timerSize[settings.timerSize]*12}
+  local attemptObj = {text = "#"..speeddata.attempt, x = timerX[settings.attemptsPosition], pivot = timerPivot[settings.attemptsPosition], priority = 9.99, font = textfont, xscale = 2, yscale = 2, color = Color.white, height = 16}
+  local inputObj = {x = inputX[settings.inputPosition], height = 16}
 
   -- Change position if there is splitscreen
 	if camera.width == 400 then
@@ -764,74 +786,73 @@ function lib.onCameraDraw(idx)
 		attemptObj.x = timerXSplit[settings.attemptsPosition]
 		inputObj.x = inputXSplit[settings.inputPosition]
 	end
-	if camera.height == 300 then
-		timerObj.y = 292
-		attemptObj.y = 292
-		inputObj.y = 276
-	end
 
-	-- Pritn the text depending on the format needed
-	if settings.showTimerClock and settings.showTimerFrames then
-		timerObj.text = formatTime(speeddata.timer).." ["..speeddata.timer.."]"
-	elseif settings.showTimerClock then
-		timerObj.text = formatTime(speeddata.timer)
-	elseif settings.showTimerFrames then
-		timerObj.text = tostring(speeddata.timer)
-	end
+	-- Print the text depending on the format needed
+	timerObj.text = formatOut(speeddata.timer)
 
   -- Make text transperent
 	if settings.transperent then
 		opacity = 0.5
 	end
 
-	-- Change the y position if multiple objects overlap
-	if (settings.showTimerClock or settings.showTimerFrames) and settings.timerPosition == settings.attemptsPosition then
-		attemptObj.y = timerObj.y - 32
-	end
-	if (settings.showTimerClock or settings.showTimerFrames) and settings.timerPosition == settings.inputPosition then
-		inputObj.y = timerObj.y - 36
-	end
-	if settings.showAttempts and settings.attemptsPosition == settings.inputPosition then
-		inputObj.y = inputObj.y - 36
-	end
 	if inEpisode then
-		timerObj.y = timerObj.y - timerObj.height
+		timerObj.height = timerObj.height*2
+	end
+
+	if camera.width == 800 and camera.height == 600 and player2 then
+		inputObj.height = inputObj.height*2
+	end
+
+	-- Change the y position if multiple objects overlap
+	--[[
+	    * attempt
+			* input
+			* time (level)
+			* time (episode)
+	--]]
+
+	timerObj.y = 592
+
+	if settings.timerPosition > 1 and settings.timerPosition == settings.inputPosition then
+		inputObj.y = timerObj.y - timerObj.height
+	else
+		inputObj.y = 592
+	end
+
+	if settings.inputPosition > 1 and settings.inputPosition == settings.attemptsPosition then
+		attemptObj.y = inputObj.y - inputObj.height - 4
+	elseif settings.timerPosition > 1 and settings.timerPosition == settings.attemptsPosition then
+		attemptObj.y = timerObj.y - timerObj.height
+	else
+		attemptObj.y = 592
+	end
+
+	if camera.height == 300 then
+		attemptObj.y = attemptObj.y - 300
+		inputObj.y = inputObj.y - 300
+		timerObj.y = timerObj.y - 300
 	end
 
 	-- Print inputs
-	if settings.showInputs then
+	if settings.inputPosition > 1 then
 		if camera.width == 800 and camera.height == 600 and player2 then
-			renderInputs(player, inputObj.x, inputObj.y - 18)
-			renderInputs(player2, inputObj.x, inputObj.y)
+			renderInputs(player, inputObj.x, inputObj.y - inputObj.height - 4)
+			renderInputs(player2, inputObj.x, inputObj.y - inputObj.height*0.5)
 		else
-			renderInputs(pList[idx], inputObj.x, inputObj.y)
+			renderInputs(pList[idx], inputObj.x, inputObj.y - inputObj.height)
 		end
 	end
 
 	-- Print attempts
-	if settings.showAttempts then
+	if settings.attemptsPosition > 1 then
 		attemptObj.color = attemptObj.color*opacity
 		textplus.print(attemptObj)
 	end
 
 	-- Print timer (level and episode)
-	if timerObj.text then
+	if settings.timerPosition > 1 and timerObj.text then
 		if hasLevelWon and levelWinTimeDiff then
-			local levelWinTimeDiffTxt
-			local sym = signSym(levelWinTimeDiff)
-			if settings.showTimerClock and settings.showTimerFrames then
-				levelWinTimeDiffTxt = formatTime(levelWinTimeDiff).." ["..levelWinTimeDiff.."]"
-			elseif settings.showTimerClock then
-				levelWinTimeDiffTxt = formatTime(levelWinTimeDiff)
-			elseif settings.showTimerFrames then
-				levelWinTimeDiffTxt = tostring(levelWinTimeDiff)
-			end
-
-			if levelWinTimeDiff < 0 then timerObj.text = "<color rainbow>"..timerObj.text.."</color>"
-			elseif levelWinTimeDiff > 0 then timerObj.color = Color.red
-			else timerObj.color = Color.gray end
-
-			timerObj.text = timerObj.text.." <color white>"..sym..levelWinTimeDiffTxt.."</color>"
+			formatFin(timerObj, levelWinTimeDiff)
 		end
 
 		local etimerObj
@@ -843,31 +864,11 @@ function lib.onCameraDraw(idx)
 		textplus.print(timerObj)
 
 		if inEpisode then
-			etimerObj.y = etimerObj.y + etimerObj.height
-			if settings.showTimerClock and settings.showTimerFrames then
-				etimerObj.text = formatTime(speeddata.etimer).." ["..speeddata.etimer.."]"
-			elseif settings.showTimerClock then
-				etimerObj.text = formatTime(speeddata.etimer)
-			elseif settings.showTimerFrames then
-				etimerObj.text = tostring(speeddata.etimer)
-			end
+			etimerObj.y = timerObj.y - etimerObj.height*0.5
+			etimerObj.text = formatOut(speeddata.etimer)
 
 			if hasEpisodeWon and episodeWinTimeDiff then
-				local episodeWinTimeDiffTxt
-				local sym = signSym(episodeWinTimeDiff)
-				if settings.showTimerClock and settings.showTimerFrames then
-					episodeWinTimeDiffTxt = formatTime(episodeWinTimeDiff).." ["..episodeWinTimeDiff.."]"
-				elseif settings.showTimerClock then
-					episodeWinTimeDiffTxt = formatTime(episodeWinTimeDiff)
-				elseif settings.showTimerFrames then
-					episodeWinTimeDiffTxt = tostring(episodeWinTimeDiff)
-				end
-
-				if episodeWinTimeDiff < 0 then etimerObj.text = "<color rainbow>"..etimerObj.text.."</color>"
-			  elseif episodeWinTimeDiff > 0 then etimerObj.color = Color.red
-				else etimerObj.color = Color.gray end
-
-				etimerObj.text = etimerObj.text.." <color white>"..sym..episodeWinTimeDiffTxt.."</color>"
+				formatFin(etimerObj, episodeWinTimeDiff)
 			end
 
 			etimerObj.color = etimerObj.color*opacity

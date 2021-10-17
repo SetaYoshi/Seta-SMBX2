@@ -51,16 +51,16 @@ local settings = settingsLib.data
 local worldstatLib = require(PATH.."worldstat.lua")
 local worldstat = worldstatLib.data
 
-local timerX = {8, 400, 792}
-local timerXSplit = {8, 200, 396}
-local timerPivot = {vector(0, 1), vector(0.5, 1), vector(1, 1)}
-local timerSize = {1, 2, 2.5}
+local timerX = {0, 8, 400, 792}
+local timerXSplit = {0, 8, 200, 396}
+local timerPivot = {vector(0, 0), vector(0, 1), vector(0.5, 1), vector(1, 1)}
+local timerSize = {0, 1, 2, 2.5}
 
 local iInputs = Graphics.loadImage(PATH.."inputs.png")
 local pList = {player, player2}
 local keyname = {"left", "up", "down", "right", "jump", "altJump", "run", "altRun", "pause", "dropItem"}
-local inputX = {8, 310, 612}
-local inputXSplit = {8, 110, 212}
+local inputX = {0, 8, 310, 612}
+local inputXSplit = {0, 8, 110, 212}
 
 -- Input manager for menu
 local commander = require(PATH.."mycommander.lua")
@@ -234,14 +234,11 @@ end
 
 -- Register the menu
 menu.register{name = "Check Episode PB", type = "submenu", subdata = {suboptionx = 1, suboptiony = 1}, input = epitick, render = epidraw}
-menu.register{name = "Show Clock", type = "toggle", var = "showTimerClock"}
-menu.register{name = "Show Frames", type = "toggle", var = "showTimerFrames"}
-menu.register{name = "Timer Position", type = "list", var = "timerPosition", list = {"LEFT", "CENTER", "RIGHT"}}
+menu.register{name = "Timer Mode", type = "list", var = "timerMode", list = {"Clock", "Frame", "Clock + Frame"}}
+menu.register{name = "Timer Position", type = "list", var = "timerPosition", list = {"DISABLED", "LEFT", "CENTER", "RIGHT"}}
 menu.register{name = "Timer Size", type = "list", var = "timerSize", list = {"SMALL", "MEDIUM", "LARGE"}}
-menu.register{name = "Show Inputs", type = "toggle", var = "showInputs"}
-menu.register{name = "Inputs Position", type = "list", var = "inputPosition", list = {"LEFT", "CENTER", "RIGHT"}}
-menu.register{name = "Show Attempts", type = "toggle", var = "showAttempts"}
-menu.register{name = "Attempts Position", type = "list", var = "attemptsPosition", list = {"LEFT", "CENTER", "RIGHT"}}
+menu.register{name = "Inputs Position", type = "list", var = "inputPosition", list = {"DISABLED", "LEFT", "CENTER", "RIGHT"}}
+menu.register{name = "Attempts Position", type = "list", var = "attemptsPosition", list = {"DISABLED", "LEFT", "CENTER", "RIGHT"}}
 menu.register{name = "Show Section Split", type = "list", var = "sectionsplit", list = sectionsplittable(#levelstat)}
 menu.register{name = "Transparent", type = "toggle", var = "transperent"}
 menu.register{name = "Print Log", type = "toggle", var = "printlog"}

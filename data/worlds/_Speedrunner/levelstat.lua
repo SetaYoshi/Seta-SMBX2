@@ -3,7 +3,7 @@ local save = {}
 local lunajson = API.load("ext/lunajson")
 
 save.data = {}
-save.path = Misc.episodePath()..string.match(Level.filename(), "(.+)%..+$")..".spdrun"
+save.path = Misc.episodePath()..string.match(Level.filename(), "(.+)%..+$")..".spdlvl"
 save.default = {}
 
 local function dataValidation(t)
