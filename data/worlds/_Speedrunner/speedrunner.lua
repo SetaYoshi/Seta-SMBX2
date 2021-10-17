@@ -4,9 +4,13 @@ local lib = {}
 local PATH = getSMBXPath().."\\worlds\\_Speedrunner\\"
 local textplus = require("textplus")
 local playerManager = require("playerManager")
-local starcoin = require("npcs/AI/starcoin")
 local savestate = require("savestate")
 local inEpisode = Misc.saveSlot() > 0
+
+local starcoin
+if not isOverworld then
+  starcoin = require("npcs/AI/starcoin")
+end
 
 local function formatTime(t)
 	if t < 0 then t = -t end
@@ -46,6 +50,22 @@ local function tplusColorCode(s, n)
   end
 end
 
+GameData._speeddata = GameData._speeddata or {}
+local speeddata = GameData._speeddata
+
+
+
+-- Reset timer when an episode run begins
+if inEpisode then
+	if speeddata.prevsavefile ~= Misc.saveSlot() or speeddata.prevepisodepath ~= Misc.episodePath() then
+		speeddata.etimer = nil
+		speeddata.log = nil
+	end
+	speeddata.prevepisodepath = Misc.episodePath()
+	speeddata.prevsavefile = Misc.saveSlot()
+	speeddata.etimer = speeddata.etimer or 0
+end
+
 
 -- Different speedrun categories
 local catPowerup = false
@@ -57,18 +77,6 @@ local settingsLib = require(PATH.."settings.lua")
 local settings = settingsLib.data
 
 
-GameData._speeddata = GameData._speeddata or {}
-local speeddata = GameData._speeddata
-
--- Reset timer when an episode run begins
-if inEpisode then
-	if speeddata.prevsavefile ~= Misc.saveSlot() or speeddata.prevepisodepath ~= Misc.episodePath() then
-		speeddata.etimer = nil
-		speeddata.log = nil
-	end
-	speeddata.prevepisodepath = Misc.episodePath()
-	speeddata.prevsavefile = Misc.saveSlot()
-end
 
 -- Only save the attempt counter from being reset
 local s_attemptcount = speeddata.attempt
@@ -93,30 +101,34 @@ speeddata.timer = speeddata.timer or 0
 speeddata.attempt = speeddata.attempt or 0
 speeddata.starcoin = speeddata.starcoin or {}
 
--- Easy workaround to detect if the player collected the starcoins in a run
-local starcoin_collect = starcoin.collect
-starcoin.collect = function(coin)
-	local CoinData = starcoin.getTemporaryData()
-	if CoinData[coin.ai2] then
-		speeddata.starcoin[coin.ai2] = true
+if not isOverworld then
+	-- Easy workaround to detect if the player collected the starcoins in a run
+	local starcoin_collect = starcoin.collect
+	starcoin.collect = function(coin)
+		local CoinData = starcoin.getTemporaryData()
+		if CoinData[coin.ai2] then
+			speeddata.starcoin[coin.ai2] = true
+		end
+		-- Check if all the starcoins have been collected
+		catStarcoins = (#speeddata.starcoin == starcoin.max()) and (#speeddata.starcoin > 0)
+
+		starcoin_collect(coin)
 	end
-  -- Check if all the starcoins have been collected
-  catStarcoins = (#speeddata.starcoin == starcoin.max()) and (#speeddata.starcoin > 0)
 
-  starcoin_collect(coin)
+
+	-- Need to detect when a new level is loaded through the editor!
+	local prevLevel = speeddata.prevLevel
+	local currLevel = Misc.episodePath()..string.match(Level.filename(), "(.+)%..+$")
+	if prevLevel ~= currLevel then
+		speeddata.logger = {}
+		speeddata.startState = {}
+		speeddata.attempt = 0
+		speeddata.timer = 0
+		speeddata.starcoin = {}
+	end
+	speeddata.prevLevel = currLevel
 end
 
--- Need to detect when a new level is loaded through the editor!
-local prevLevel = speeddata.prevLevel
-local currLevel = Misc.episodePath()..string.match(Level.filename(), "(.+)%..+$")
-if prevLevel ~= currLevel then
-	speeddata.logger = {}
-  speeddata.startState = {}
-	speeddata.attempt = 0
-	speeddata.timer = 0
-	speeddata.starcoin = {}
-end
-speeddata.prevLevel = currLevel
 
 -- Images and lookups
 local iInputs = Graphics.loadImage(PATH.."inputs.png")
@@ -145,6 +157,27 @@ local finTypes = {
   [8]  = "Offscreen Exit",
   [9]  = "Warp Exit",
 	[10] = "Custom Game End"
+}
+
+local forcedTypes = {
+	[FORCEDSTATE_NONE] = "None",
+	[FORCEDSTATE_POWERUP_BIG] = "Powerup Mushroom",
+	[FORCEDSTATE_POWERDOWN_SMALL] = "Powerdown Mushroom",
+	[FORCEDSTATE_PIPE] = "Warp Pipe",
+	[FORCEDSTATE_POWERUP_FIRE] = "Powerup Fire Flower",
+	[FORCEDSTATE_POWERUP_LEAF] = "Powerup Leaf",
+	[FORCEDSTATE_RESPAWN] = "Respawning",
+  [FORCEDSTATE_DOOR] = "Warp Door",
+	[FORCEDSTATE_INVISIBLE] = "Invisible",
+	[FORCEDSTATE_ONTONGUE] = "Yoshi Tongue",
+	[FORCEDSTATE_SWALLOWED] = "Yoshi Swallowed",
+	[FORCEDSTATE_POWERUP_TANOOKI] = "Powerup Tanooki",
+	[FORCEDSTATE_POWERUP_HAMMER] = "Powerup Hammer",
+	[FORCEDSTATE_POWERUP_ICE] = "Powerup Ice",
+	[FORCEDSTATE_POWERDOWN_FIRE] = "Powerdown Fire",
+  [FORCEDSTATE_POWERDOWN_ICE] = "Powerdown Ice",
+	[FORCEDSTATE_MEGASHROOM] = "Mega Mushroom",
+	[FORCEDSTATE_TANOOKI_POOF] = "Tanooki Statue"
 }
 
 -- Important things to keep track of
@@ -177,8 +210,12 @@ end
 
 
 -- Load the library that stores the level's PBs
-local levelstatLib = require(PATH.."levelstat.lua")
-local levelstat = levelstatLib.data
+local levelstatLib
+local levelstat
+if not isOverworld then
+	levelstatLib = require(PATH.."levelstat.lua")
+	levelstat = levelstatLib.data
+end
 
 -- Load the library that stores the episodes's PBs
 local worldstatLib
@@ -418,7 +455,9 @@ end
 
 -- Register the menu
 menu.register{name = "Check Episode PB", type = "submenu", subdata = {suboptionx = 1, suboptiony = 1}, input = epitick, render = epidraw, levelBanned = true}
-menu.register{name = "Check Level PB", type = "submenu", subdata = {suboption = 1}, input = logtick, render = logdraw}
+if not isOverworld then
+  menu.register{name = "Check Level PB", type = "submenu", subdata = {suboption = 1}, input = logtick, render = logdraw}
+end
 
 menu.register{name = "Timer Mode", type = "list", var = "timerMode", list = {"Clock", "Frame", "Clock + Frame"}}
 menu.register{name = "Timer Size", type = "list", var = "timerSize", list = {"SMALL", "MEDIUM", "LARGE"}}
@@ -427,7 +466,9 @@ menu.register{name = "Position Timer", type = "list", var = "timerPosition", lis
 menu.register{name = "Position Inputs", type = "list", var = "inputPosition", list = {"HIDE", "LEFT", "CENTER", "RIGHT"}}
 menu.register{name = "Position Attempts", type = "list", var = "attemptsPosition", list = {"HIDE", "LEFT", "CENTER", "RIGHT"}}
 
-menu.register{name = "Show Section Split", type = "list", var = "sectionsplit", list = sectionsplittable(#levelstat)}
+if not isOverworld then
+  menu.register{name = "Show Section Split", type = "list", var = "sectionsplit", list = sectionsplittable(#levelstat)}
+end
 
 menu.register{name = "Transparent", type = "toggle", var = "transperent"}
 menu.register{name = "Enable Popout", type = "toggle", var = "popout", episodeBanned = true}
@@ -443,7 +484,7 @@ menu.register{name = "[AS] P1 Health", type = "list", var = "asHealth1", list = 
 menu.register{name = "[AS] P2 Health", type = "list", var = "asHealth2", list = {"1", "2", "3"}, episodeBanned = true}
 
 -- Check if the episode or level has a custom finish
-local file = io.open(Misc.episodePath().."custom_finish.spddat", "r") -- r read mode
+local file = io.open(Misc.episodePath().."speedrun_custom_ending.txt", "r") -- r read mode
 if file then
 	customFinish = file:read("*all") -- *a or *all reads the whole file
 	file:close()
@@ -465,6 +506,44 @@ local function sameTable(t1, t2)
   return true
 end
 
+
+local function parseElem(v, form, size)
+  local sizeDiff = size - #tostring(v)
+	if form == 'type' then
+		v = string.rep(" ", sizeDiff)..v..":"
+	elseif form == 'value' then
+		v = string.rep(" ", sizeDiff)..tostring(v)
+	elseif form == 'percentage' then
+		v = "%"..string.rep(" ", sizeDiff)..tostring(v)
+	elseif form == 'timeFrame' then
+		v = "["..string.rep(" ", sizeDiff)..tostring(v).."]"
+	elseif form == 'timeClock' then
+		v = string.rep(" ", sizeDiff)..v
+	end
+	return v
+end
+
+-- Helper to make lists look nice
+local function generateList(header, anatomy, list)
+	local sizes = {}
+	for k, v in ipairs(list) do
+		for p, q in ipairs(v) do
+			sizes[p] = math.max(sizes[p] or 0, #tostring(q))
+		end
+	end
+
+	local s = header..":\n"
+	for k, v in ipairs(list) do
+		s = s.."  * "
+		for p, q in ipairs(v) do
+			s = s..parseElem(q, anatomy[p], sizes[p]).." "
+		end
+		s = s.."\n"
+	end
+
+	return s
+end
+
 local function displayPopout(finType, exitSection)
 	local title = "SPEEDRUNNER POPOUT - LEVEL COMPLETE"
 	if levelWinTimeDiff then
@@ -479,61 +558,74 @@ local function displayPopout(finType, exitSection)
 
 
 	local txt = "=== "..Level.name().." ===\n"
-	txt = txt.."SMBX VERSION: "..getSMBXVersionString(SMBX_VERSION).."\n"
-	txt = txt.."TIMESTAMP: "..os.date().."\n"
-	txt = txt.."TYPE: "..finTypes[finType].."   @"..exitSection.."\n"
+	txt = txt.."SMBX Version: "..getSMBXVersionString(SMBX_VERSION).."\n"
+	txt = txt.."Timestamp: "..os.date().."\n"
+	txt = txt.."Exit Type: "..finTypes[finType].."   @"..exitSection.."\n"
 	txt = txt.."\n"
-	txt = txt.."TIME CLOCK: "..formatTime(speeddata.timer).."\n"
-	txt = txt.."TIME FRAME: "..speeddata.timer.."\n"
+	txt = txt.."Time: "..formatTime(speeddata.timer).."  ["..speeddata.timer.."]\n"
 	if levelWinTimeDiff then
-		txt = txt.."CURRENT BEST CLOCK: "..formatTime(speeddata.timer - levelWinTimeDiff).."\n"
-		txt = txt.."CURRENT BEST FRAME: "..speeddata.timer - levelWinTimeDiff.."\n"
 		local sign = signSym(levelWinTimeDiff)
-		txt = txt.."TIME DIFFERENCE OF: "..sign..formatTime(levelWinTimeDiff).." ["..levelWinTimeDiff.."]\n"
+		txt = txt.."Best: "..formatTime(speeddata.timer - levelWinTimeDiff).."  ["..(speeddata.timer - levelWinTimeDiff).."]\n"
+		txt = txt.."Time Difference of: "..sign..formatTime(levelWinTimeDiff).." ["..sign..math.abs(levelWinTimeDiff).."]\n"
 	end
 	txt = txt.."\n"
 	txt = txt.."\n"
-	txt = txt.."CATEGORIES:\n"
-	txt = txt.."  * Advatage Start: "..tostring(catPowerup).."\n"
-	txt = txt.."  * Multiplayer: "..tostring(catMult).."\n"
-	txt = txt.."  * Starcoins: "..tostring(catStarcoins).."\n"
+	txt = txt..generateList("CATEGORIES", {'type', 'value'},
+	  {{"Advatage Start", catPowerup},
+		 {"Multiplayer", catMult},
+		 {"Starcoins", catStarcoins}})
+
 	txt = txt.."\n"
 	txt = txt.."\n"
-	txt = txt.."PLAYER:\n"
-	local pstate = speeddata.startState[1]
-	txt = txt.."  * CHARACTER: "..getCharName(pstate.character).."\n"
-	txt = txt.."  * COSTUME: "..getCostumeName(pstate.costume).."\n"
-	txt = txt.."  * POWERUP: "..getPowName(pstate.powerup).."\n"
-	txt = txt.."  * MOUNT: "..getMountName(pstate.mount, pstate.mountcolor).."\n"
-	txt = txt.."  * HEALTH: "..pstate.health.."\n"
-	txt = txt.."\n"
-	txt = txt.."\n"
-	txt = txt.."SECTION:\n"
+
+	for k, pstate in ipairs(speeddata.startState) do
+		txt = txt..generateList("PLAYER "..k, {'type', 'value'},
+		{{"Character", getCharName(pstate.character)},
+		 {"Costume", getCostumeName(pstate.costume)},
+		 {"Powerup", getPowName(pstate.powerup)},
+		 {"Mount", getMountName(pstate.mount, pstate.mountcolor)},
+		 {"Health", pstate.health}})
+
+		 txt = txt.."\n"
+		 txt = txt.."\n"
+	end
+
+
+	local sectionData = {}
 	for k, v in pairs(logger.sectionsplit) do
-		txt = txt.."  * "..v.id..": "..formatTime(v.time).." ["..v.time.."]".."  %"..(math.floor(v.time/speeddata.timer*10000)/100).."\n"
+		table.insert(sectionData, {v.id, formatTime(v.time), v.time, math.floor(v.time/speeddata.timer*10000)/100})
 	end
+	txt = txt..generateList("SECTION", {'type', 'timeClock', 'timeFrame', 'percentage'}, sectionData)
+
 	txt = txt.."\n"
 	txt = txt.."\n"
-	txt = txt.."INPUTS:\n"
+
+	local inputData = {}
 	for k, v in pairs(logger.inputs) do
-		txt = txt.."  * "..k..": "..formatTime(v).." ["..v.."]".."  %"..(math.floor(v/speeddata.timer*10000)/100).."\n"
+		table.insert(inputData, {k, formatTime(v), v, math.floor(v/speeddata.timer*10000)/100})
 	end
+	txt = txt..generateList("INPUTS", {'type', 'timeClock', 'timeFrame', 'percentage'}, inputData)
+
 	txt = txt.."\n"
 	txt = txt.."\n"
-	txt = txt.."FORCED STATES:\n"
+	local forcedStateData = {}
 	for k, v in pairs(logger.forcedState) do
-		txt = txt.."  * "..k..": "..formatTime(v).." ["..v.."]".."  %"..(math.floor(v/speeddata.timer*10000)/100).."\n"
+		table.insert(forcedStateData, {forcedTypes[k], "["..k.."]:", formatTime(v), v, math.floor(v/speeddata.timer*10000)/100})
 	end
+	txt = txt..generateList("FORCED STATE", {'type', 'value', 'timeClock', 'timeFrame', 'percentage'}, forcedStateData)
+
 	txt = txt.."\n"
 	txt = txt.."\n"
-	txt = txt.."MISC:\n"
-	txt = txt.."  * ON GROUND: "..formatTime(logger.onground).." ["..logger.onground.."]".."  %"..(math.floor(logger.onground/speeddata.timer*10000)/100).."\n"
-	txt = txt.."  * SLIDING: "..formatTime(logger.sliding).." ["..logger.sliding.."]".."  %"..(math.floor(logger.sliding/speeddata.timer*10000)/100).."\n"
-	txt = txt.."  * SPIN JUMPING: "..formatTime(logger.spinjump).." ["..logger.spinjump.."]".."  %"..(math.floor(logger.spinjump/speeddata.timer*10000)/100).."\n"
+
+	txt = txt..generateList("MISC", {'type', 'timeClock', 'timeFrame', 'percentage'},
+		{{"Touching Ground", formatTime(logger.onground), logger.onground, math.floor(logger.onground/speeddata.timer*10000)/100},
+		 {"Sliding", formatTime(logger.sliding), logger.sliding, math.floor(logger.sliding/speeddata.timer*10000)/100},
+		 {"Spin Jumping", formatTime(logger.spinjump), logger.spinjump, math.floor(logger.spinjump/speeddata.timer*10000)/100}})
+
 
   if settings.printlog then
 		time = os.date("*t")
-		local writefile = io.open(Misc.episodePath().."LOG "..time.year..","..timer.month..","..time.day.." - "..time.hour ..",".. time.min ..",".. time.sec.." "..string.match(Level.filename(), "(.+)%..+$")..".txt", "w")
+		local writefile = io.open(Misc.episodePath().."SPEEDLOG "..time.year.."-"..time.month.."-"..time.day.." - "..time.hour .."-".. time.min .."-".. time.sec.." "..string.match(Level.filename(), "(.+)%..+$")..".txt", "w")
 		if not writefile then return end
 
 		writefile:write(txt)
@@ -548,26 +640,28 @@ end
 local function timeFinish(finType, finSec)
   finSec = finSec or -1
 
+	-- Create run object
+	local category = {type = finType, section = finSec, powerup = catPowerup, mult = catMult, starcoin = catStarcoins}
+	local newLevelRun = {diff = levelWinTimeDiff, category = category, time = speeddata.timer, sectionsplit = logger.sectionsplit, date = os.date(), attempts = speeddata.attempt, smbxversion = SMBX_VERSION, startstate = speeddata.startState, name = Level.name()}
+
+	-- Check if there is a run stored of the same category
+	local oldLevelRun, oldLevelRunKey
+	for k, v in ipairs(levelstat) do
+		if sameTable(category, v.category) then
+			oldLevelRunKey, oldLevelRun = k, v
+			break
+		end
+	end
+	-- If a run of the same category exists, then get the diff. time
+	if oldLevelRun then levelWinTimeDiff = newLevelRun.time - oldLevelRun.time newLevelRun.diff = levelWinTimeDiff end
+
   hasLevelWon = true
   if finType == 10 or finType == LEVEL_END_STATE_GAMEEND then
     hasEpisodeWon = true
   end
 
-  -- Create run object
-  local category = {type = finType, section = finSec, powerup = catPowerup, mult = catMult, starcoin = catStarcoins}
-  local newLevelRun = {diff = levelWinTimeDiff, category = category, time = speeddata.timer, sectionsplit = logger.sectionsplit, date = os.date(), attempts = speeddata.attempt, smbxversion = SMBX_VERSION, startstate = speeddata.startState, name = Level.name()}
 
-  -- Check if there is a run stored of the same category
-	local oldLevelRun, oldLevelRunKey
-  for k, v in ipairs(levelstat) do
-    if sameTable(category, v.category) then
-      oldLevelRunKey, oldLevelRun = k, v
-      break
-    end
-  end
 
-  -- If a run of the same category exists, then get the diff. time
-	if oldLevelRun then levelWinTimeDiff = newLevelRun.time - oldLevelRun.time end
 
   -- Show log
   displayPopout(finType, finSec)
@@ -583,7 +677,7 @@ local function timeFinish(finType, finSec)
 
   if inEpisode then
     -- When playing in an episode, log the level to the episode data
-    table.insert(speeddata.log, 1, newLevelRun)
+    table.insert(speeddata.log, newLevelRun)
 
     -- When the episode is beaten
     if hasEpisodeWon then
@@ -680,7 +774,7 @@ function lib.onTick()
 		logger.forcedState[player.forcedState] = (logger.forcedState[player.forcedState] or 0) + 1
 	end
 
-	if player.isOnGround then
+	if player:isGroundTouching() then
 	  logger.onground = logger.onground + 1
 	end
 
@@ -693,7 +787,12 @@ function lib.onTick()
 	end
 end
 
-function lib.onDraw()
+function lib.onWorldDraw()
+  speeddata.etimer = speeddata.etimer + 1
+	lib.onCameraDraw(1)
+end
+
+function lib.onLevelDraw()
 	-- Detection when the level has been finished
 	if Level.winState() ~= 0 and not hasLevelWon then
     timeFinish(Level.winState(), player.section)
@@ -772,7 +871,7 @@ local function renderInputs(p, x, y)
 end
 
 
--- Draw the timer and inputs
+-- Draw the timer and inputs and attempts and section split
 function lib.onCameraDraw(idx)
 	-- These are the objects that will be printed onscreen
 	local opacity = 1
@@ -897,46 +996,62 @@ function lib.onCameraDraw(idx)
 		textplus.print{text = notif.text, x = 760  + off, y = 8, pivot = {1, 0}, priority = 9.99, font = textfont, xscale = 2, yscale = 2, plaintext = true, color = Color.red*opacity}
 	end
 
-	-- Print the section splitter
-	if settings.sectionsplit > 0 then
-		local selectedRun = levelstat[settings.sectionsplit - 1]
-		if not selectedRun then
-			settings.sectionsplit = 1
-			return
+	-- The splitter changes if in a world map
+	if isOverworld then
+    -- Print the episode log
+		if settings.timerPosition > 1 and #speeddata.log > 0 then
+			for i = 1, math.min(#speeddata.log, 10) do
+				local v = speeddata.log[i]
+				local s = formatTime(v.time)
+				local d = formatTime(math.abs(v.diff or 0))
+				if v.diff and v.diff > 0 then d = "<color red>+"..d.."</color>"
+				elseif v.diff and v.diff < 0 then d = "<color rainbow>-"..d.."</color>"
+				else d = " "..d end
+				textplus.print{text = s.." "..d, x = 792, y = 8 + 10*i, pivot = {1, 0}, priority = 9.99, font = textfont, xscale = 1, yscale = 1}
+			end
 		end
-
-		local selectedCat = selectedRun.category
-		local secList = selectedRun.sectionsplit
-		if prevBestRun then
-			secList = prevBestRun.sectionsplit
-		end
-
-		-- Print exit name type and section
-		local exitname = finTypes[selectedCat.type]
-		if selectedCat.section ~= -1 then exitname = exitname.." @"..selectedCat.section end
-		textplus.print{text = exitname, x = 800 - 8, y = 8, pivot = {1, 0}, priority = 9.99, font = textfont, color = Color.white*opacity}
-
-		-- Print category icons
-		for k, v in ipairs({"powerup", "mult", "starcoin"}) do
-			local sourceX, sourceY = 16*(k - 1), 0
-			if selectedCat[v] then sourceY = 16 end
-			Graphics.draw{type = RTYPE_IMAGE, x = 800 - 6  - (3 - k + 1)*18, y = 8 + 10, priority = 9.99, image = iIcons, sourceX = sourceX, sourceY = sourceY, sourceWidth = 16, sourceHeight = 16, opacity = opacity}
-		end
-
-		-- Print timers
-		for k, v in ipairs(secList) do
-			local t = formatTime(v.time)
-			local splitColor = Color.white
-			if logger.sectionsplit[k] and logger.sectionsplit[k].id == v.id then
-				local d = logger.sectionsplit[k].time - v.time
-				t = signSym(d)..formatTime(d)
-				if d < 0 then t = "<color rainbow>"..t.."</color>"
-			  elseif d > 0 then splitColor = Color.red
-				else splitColor = Color.gray end
-				splitColor = splitColor*opacity
+	else
+		-- Print the section splitter
+		if settings.sectionsplit > 0 then
+			local selectedRun = levelstat[settings.sectionsplit - 1]
+			if not selectedRun then
+				settings.sectionsplit = 1
+				return
 			end
 
-      textplus.print{text = t, x = 800 - 8, y = 8 + 18+10 + 8 + (k - 1)*10, pivot = {1, 0}, priority = 9.99, font = textfont, color = splitColor}
+			local selectedCat = selectedRun.category
+			local secList = selectedRun.sectionsplit
+			if prevBestRun then
+				secList = prevBestRun.sectionsplit
+			end
+
+			-- Print exit name type and section
+			local exitname = finTypes[selectedCat.type]
+			if selectedCat.section ~= -1 then exitname = exitname.." @"..selectedCat.section end
+			textplus.print{text = exitname, x = 800 - 8, y = 8, pivot = {1, 0}, priority = 9.99, font = textfont, color = Color.white*opacity}
+
+			-- Print category icons
+			for k, v in ipairs({"powerup", "mult", "starcoin"}) do
+				local sourceX, sourceY = 16*(k - 1), 0
+				if selectedCat[v] then sourceY = 16 end
+				Graphics.draw{type = RTYPE_IMAGE, x = 800 - 6  - (3 - k + 1)*18, y = 8 + 10, priority = 9.99, image = iIcons, sourceX = sourceX, sourceY = sourceY, sourceWidth = 16, sourceHeight = 16, opacity = opacity}
+			end
+
+			-- Print timers
+			for k, v in ipairs(secList) do
+				local t = formatTime(v.time)
+				local splitColor = Color.white
+				if logger.sectionsplit[k] and logger.sectionsplit[k].id == v.id then
+					local d = logger.sectionsplit[k].time - v.time
+					t = signSym(d)..formatTime(d)
+					if d < 0 then t = "<color rainbow>"..t.."</color>"
+					elseif d > 0 then splitColor = Color.red
+					else splitColor = Color.gray end
+					splitColor = splitColor*opacity
+				end
+
+				textplus.print{text = t, x = 800 - 8, y = 8 + 18+10 + 8 + (k - 1)*10, pivot = {1, 0}, priority = 9.99, font = textfont, color = splitColor}
+			end
 		end
 	end
 end
@@ -981,11 +1096,6 @@ function lib.onExitLevel(type)
 		SaveData.clear()
 		Misc.saveGame()
   end
-  -- Misc.dialog(GameData._speeddata)
-	-- local s = require("ext/serializer")
-	-- Misc.dialog(s.serialize(speeddata))
-	-- Misc.dialog(s.serialize(GameData))
-  --GameData._speeddata = nil
 end
 
 -- For when the episode has a custom end game
@@ -1006,13 +1116,20 @@ end
 
 
 function lib.onInitAPI()
-	registerEvent(lib, "onStart", "onStart")
-	registerEvent(lib, "onEvent", "onEvent")
-	registerEvent(lib, "onInputUpdate", "onInputUpdate")
-	registerEvent(lib, "onTick", "onTick")
-  registerEvent(lib, "onDraw", "onDraw")
-	registerEvent(lib, "onCameraDraw", "onCameraDraw")
-	registerEvent(lib, "onExitLevel", "onExitLevel")
+	if not isOverworld then
+		registerEvent(lib, "onStart", "onStart")
+		registerEvent(lib, "onEvent", "onEvent")
+		registerEvent(lib, "onInputUpdate", "onInputUpdate")
+		registerEvent(lib, "onTick", "onTick")
+		registerEvent(lib, "onExitLevel", "onExitLevel")
+		registerEvent(lib, "onCameraDraw", "onCameraDraw")
+	end
+
+	if isOverworld then
+		registerEvent(lib, "onDraw", "onWorldDraw")
+	else
+		registerEvent(lib, "onDraw", "onLevelDraw")
+	end
 end
 
 return lib
