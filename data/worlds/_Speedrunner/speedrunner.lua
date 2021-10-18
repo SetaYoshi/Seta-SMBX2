@@ -412,7 +412,6 @@ local function epidraw(subdata)
 	end
 
 	local selection = run.log[subdata.suboptiony]
-	local category = selection.category
 
 	local heading = getSMBXVersionString(run.smbxversion)
 	if subdata.suboptionx == 1 then heading = "(BEST) "..heading
@@ -423,28 +422,31 @@ local function epidraw(subdata)
 	textplusPBPrint(run.date, 8, 8 + 26*2)
 
 
-	local exitname = finTypes[category.type]
-	if category.section ~= -1 then exitname = exitname.." @"..category.section end
+  if selection then
+    local category = selection.category
+    local exitname = finTypes[category.type]
+    if category.section ~= -1 then exitname = exitname.." @"..category.section end
 
-	textplusPBPrint("("..(subdata.suboptiony).."/"..#run.log..") "..selection.name,   8, 8 + 26*5)
-	textplusPBPrint(selection.date, 8, 8 + 26*6)
-	textplusPBPrint(exitname,       8, 8 + 26*7)
+    textplusPBPrint("("..(subdata.suboptiony).."/"..#run.log..") "..selection.name,   8, 8 + 26*5)
+    textplusPBPrint(selection.date, 8, 8 + 26*6)
+    textplusPBPrint(exitname,       8, 8 + 26*7)
 
-	for k, v in ipairs({"powerup", "mult", "starcoin"}) do
-		local sourceX, sourceY = 16*(k - 1), 0
-		if category[v] then sourceY = 16 end
-		Graphics.draw{type = RTYPE_IMAGE, x = 8 + 18*(k - 1), y = 8 + (26*8), priority = 9.99, image = iIcons, sourceX = sourceX, sourceY = sourceY, sourceWidth = 16, sourceHeight = 16}
-	end
+    for k, v in ipairs({"powerup", "mult", "starcoin"}) do
+      local sourceX, sourceY = 16*(k - 1), 0
+      if category[v] then sourceY = 16 end
+      Graphics.draw{type = RTYPE_IMAGE, x = 8 + 18*(k - 1), y = 8 + (26*8), priority = 9.99, image = iIcons, sourceX = sourceX, sourceY = sourceY, sourceWidth = 16, sourceHeight = 16}
+    end
 
-	textplusPBPrint(formatTime(selection.time).."  ["..selection.time.."]",       8, 8 + 26*9)
-	textplusPBPrint("Attempts:"..selection.attempts,                              8, 8 + 26*10)
+    textplusPBPrint(formatTime(selection.time).."  ["..selection.time.."]",       8, 8 + 26*9)
+    textplusPBPrint("Attempts:"..selection.attempts,                              8, 8 + 26*10)
 
-	for k, pstate in ipairs(selection.startstate) do
-		textplusPBPrint(getCharName(pstate.character).."\n"..getCostumeName(pstate.costume).."\n"..getPowName(pstate.powerup).."\n"..getMountName(pstate.mount, pstate.mountcolor).."\n"..getBoxName(pstate.reserveBox).."\n"..pstate.health, 36 + (k - 1)*300, 8 + 26*11)
-		for i = 1, 6 do
-			Graphics.draw{type = RTYPE_IMAGE, x = 16 + (k - 1)*300, y = 8 + 26*11 + 18*(i - 1), priority = 9.99, image = iStat, sourceX = 16*(i - 1), sourceY = 0, sourceWidth = 16, sourceHeight = 16}
-		end
-	end
+    for k, pstate in ipairs(selection.startstate) do
+      textplusPBPrint(getCharName(pstate.character).."\n"..getCostumeName(pstate.costume).."\n"..getPowName(pstate.powerup).."\n"..getMountName(pstate.mount, pstate.mountcolor).."\n"..getBoxName(pstate.reserveBox).."\n"..pstate.health, 36 + (k - 1)*300, 8 + 26*11)
+      for i = 1, 6 do
+        Graphics.draw{type = RTYPE_IMAGE, x = 16 + (k - 1)*300, y = 8 + 26*11 + 18*(i - 1), priority = 9.99, image = iStat, sourceX = 16*(i - 1), sourceY = 0, sourceWidth = 16, sourceHeight = 16}
+      end
+    end
+  end
 end
 
 local function sectionsplittable(max)
