@@ -61,6 +61,8 @@ local function mainInput()
     elseif selection.type == "list" then
       mym.data[selection.var] = mym.data[selection.var] + 1
       if mym.data[selection.var] > #selection.list then mym.data[selection.var] = 1 end
+    elseif selection.type == "func" then
+      selection.func()
     elseif selection.type == "submenu" then
       mym.submenu = mym.option
     elseif selection.type == "numpad" then

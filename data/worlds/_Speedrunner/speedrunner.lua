@@ -447,10 +447,16 @@ local function epidraw(subdata)
 	end
 end
 
-function sectionsplittable(max)
+local function sectionsplittable(max)
 	local t = {"HIDE"}
 	for i = 1, max do table.insert(t, tostring(i)) end
 	return t
+end
+
+local function resetGame()
+  menu.toggle()
+  GameData._speeddata = nil
+  Misc.exitGame()
 end
 
 -- Register the menu
@@ -475,6 +481,7 @@ menu.register{name = "Enable Popout", type = "toggle", var = "popout", episodeBa
 menu.register{name = "Print Log", type = "toggle", var = "printlog"}
 menu.register{name = "Disable Checkpoints", type = "toggle", var = "disableChecks", episodeBanned = true}
 menu.register{name = "Enable Savestate HotKeys", type = "toggle", var = "enablesavestate", episodeBanned = true}
+menu.register{name = "Reset Episode", type = "func", func = resetGame, levelBanned = true}
 menu.register{name = "Enable Extra Advantage Start Features", type = "toggle", var = "enableas", episodeBanned = true}
 menu.register{name = "[AS] P1 Costume", type = "list", var = "asCostume1", list = costumelist, episodeBanned = true}
 menu.register{name = "[AS] P2 Costume", type = "list", var = "asCostume2", list = costumelist, episodeBanned = true}
@@ -484,10 +491,13 @@ menu.register{name = "[AS] P1 Health", type = "list", var = "asHealth1", list = 
 menu.register{name = "[AS] P2 Health", type = "list", var = "asHealth2", list = {"1", "2", "3"}, episodeBanned = true}
 
 -- Check if the episode or level has a custom finish
-local file = io.open(Misc.episodePath().."speedrun_custom_ending.txt", "r") -- r read mode
+local file = io.open(Misc.episodePath().."speedrun_custom_ending.lua", "r") -- r read mode
 if file then
-	customFinish = file:read("*all") -- *a or *all reads the whole file
-	file:close()
+  file:close()
+	customFinish = require("speedrun_custom_ending")
+  if type(customFinish) == "string" then
+    customFinish = {[Level.filename()] = customFinish}
+  end
 end
 
 -- Checks if a player has an "advantage" (not small default)
@@ -747,6 +757,17 @@ function lib.onStart()
 			}
     end
 	end
+
+  -- Display the starting time for a bit as a fix tracking time when playing in an episode
+  local startingTime = speeddata.timer
+  if inEpisode then
+    Routine.run(function()
+      for i = 1, 30 do
+        textplus.print{text = formatTime(startingTime).." ["..startingTime.."]", x = 8, y = 8, priority = 9.99, font = textfont}
+        Routine.skip()
+      end
+    end)
+  end
 end
 
 function lib.onTick()
@@ -853,20 +874,17 @@ local function formatFin(obj, diff)
 	obj.text = obj.text.." <color white>"..sym..formatOut(diff).."</color>"
 end
 
+local pos = {vector(3, 9), vector(10, 2), vector(10, 16), vector(17, 9), vector(32, 16), vector(39, 9), vector(25, 9), vector(32, 2), vector(17, 16), vector(25, 16)}
 local function renderInputs(p, x, y)
+  local opacity = 1
+  if settings.transperent then opacity = 0.5 end
+  Graphics.draw{image = iInputs, type = RTYPE_IMAGE, sourceWidth = 48, x = x, y = y, priority = 9.9, opacity = opacity, priority = 9.99}
 	for k, v in ipairs(keyname) do
-		local opacity = 1
-		local sourceX = k - 1
-		local sourceY = 16
-		if settings.transperent then opacity = 0.5 end
-		if p.character == CHARACTER_PEACH and v == "altJump" then
-			sourceX = 10
-		end
-		if not p.rawKeys[v] then
-			opacity = opacity*0.25
-			sourceY = 0
-		end
-		Graphics.draw{image = iInputs, type = RTYPE_IMAGE, x = x + 18*(k - 1), y = y, priority = 9.9, sourceX = 16*sourceX, sourceY = sourceY, sourceHeight = 16, sourceWidth = 16, opacity = opacity, priority = 9.99}
+    if p.rawKeys[v] then
+      local sourceX = pos[k].x
+      local sourceY = pos[k].y
+      Graphics.draw{image = iInputs, type = RTYPE_IMAGE, sourceX = sourceX + 48, sourceY = sourceY, sourceWidth = 6, sourceHeight = 6, x = x + sourceX, y = y + sourceY, priority = 9.9, opacity = opacity, priority = 9.99}
+    end
 	end
 end
 
@@ -877,7 +895,7 @@ function lib.onCameraDraw(idx)
 	local opacity = 1
 	local timerObj = {x = timerX[settings.timerPosition], pivot = timerPivot[settings.timerPosition], priority = 9.99, font = textfont, xscale = timerSize[settings.timerSize], yscale = timerSize[settings.timerSize], color = Color.white, height = timerSize[settings.timerSize]*12}
   local attemptObj = {text = "#"..speeddata.attempt, x = timerX[settings.attemptsPosition], pivot = timerPivot[settings.attemptsPosition], priority = 9.99, font = textfont, xscale = 2, yscale = 2, color = Color.white, height = 16}
-  local inputObj = {x = inputX[settings.inputPosition], height = 16}
+  local inputObj = {x = inputX[settings.inputPosition], height = 24}
 
   -- Change position if there is splitscreen
 	if camera.width == 400 then
@@ -960,10 +978,9 @@ function lib.onCameraDraw(idx)
 	  end
 
 		timerObj.color = timerObj.color*opacity
-		textplus.print(timerObj)
 
 		if inEpisode then
-			etimerObj.y = timerObj.y - etimerObj.height*0.5
+			timerObj.y = timerObj.y - etimerObj.height*0.5
 			etimerObj.text = formatOut(speeddata.etimer)
 
 			if hasEpisodeWon and episodeWinTimeDiff then
@@ -973,6 +990,8 @@ function lib.onCameraDraw(idx)
 			etimerObj.color = etimerObj.color*opacity
 			textplus.print(etimerObj)
 		end
+
+    textplus.print(timerObj)
 	end
 
 	-- Print the category when the level is finished
@@ -1100,7 +1119,7 @@ end
 
 -- For when the episode has a custom end game
 function lib.onEvent(eventname)
-  if eventname == customFinish then
+  if customFinish[Level.filename()] == eventname then
     timeFinish(10, player.section)
 	end
 end
