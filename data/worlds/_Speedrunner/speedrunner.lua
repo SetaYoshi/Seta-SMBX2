@@ -143,8 +143,8 @@ local timerSize = {1, 2, 2.5}
 
 local pList = {player, player2}
 local keyname = {"left", "up", "down", "right", "jump", "altJump", "run", "altRun", "dropItem", "pause"}
-local inputX = {0, 8, 310, 612}
-local inputXSplit = {0, 8, 110, 212}
+local inputX = {0, 8, 376, 744}
+local inputXSplit = {0, 8, 176, 644}
 
 local finTypes = {
   [1]  = "Roulette",
@@ -184,7 +184,7 @@ local forcedTypes = {
 local forceExitWarp = 0
 local isFollowingSectionSplit = false
 local sectionSplit = 1
-local customFinish
+local customFinish = {}
 
 local hasLevelWon
 local hasEpisodeWon

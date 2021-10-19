@@ -9,7 +9,7 @@ save.data = {}
 save.path = getSMBXPath().."/logs/_speedrun_settings.txt"
 
 save.default = {
-  timerSize = 1,
+  timerSize = 2,
   timerMode = 1,
   timerPosition = 3,
   inputPosition = 4,
