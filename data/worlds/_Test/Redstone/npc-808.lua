@@ -7,12 +7,7 @@ local min = math.min
 
 noteblock.name = "noteblock"
 noteblock.id = NPC_ID
-
-noteblock.test = function()
-  return "isNoteblock", function(x)
-    return (x == noteblock.id or x == noteblock.name)
-  end
-end
+noteblock.order = 0.54
 
 noteblock.onRedPower = function(n, c, power, dir, hitbox)
   redstone.setEnergy(n, power)
@@ -50,6 +45,8 @@ noteblock.config = npcManager.setNpcSettings({
 local animTimer = 0
 local animFrame = 0
 
+local EXISTS_NOTE
+
 function noteblock.prime(n)
   local data = n.data
 
@@ -61,6 +58,10 @@ function noteblock.prime(n)
 
   data.instrument = data.instrument or 0
   data.invspace = true
+end
+
+function noteblock.onRedLoad()
+  EXISTS_NOTE = redstone.id.note
 end
 
 function noteblock.onRedTick(n)
@@ -75,9 +76,13 @@ function noteblock.onRedTick(n)
   if data.power > 0 and data.powerPrev == 0 then
     data.observ = true
     data.observpower = data.power
-    local v = NPC.spawn(redstone.component.note.id, n.x, n.y, n:mem(0x146, FIELD_WORD))
-    v.data._settings.type = data.frameX
-    redstone.component.note.prime(v)
+
+    if EXISTS_NOTE then
+      local v = NPC.spawn(redstone.id.note, n.x, n.y, n:mem(0x146, FIELD_WORD))
+      v.data._settings.type = data.frameX
+      redstone.component.note.prime(v)
+    end
+
     if not redstone.isMuted(n) then
       --START SOUND
     end
@@ -101,9 +106,8 @@ function noteblock.onRedDraw(n)
   redstone.drawNPC(n)
 end
 
+local config = noteblock.config
 function noteblock.onDraw()
-  local config = noteblock.config
-
   animTimer = animTimer + 1
   if animTimer >= config.frameSpeed then
     animTimer = 0

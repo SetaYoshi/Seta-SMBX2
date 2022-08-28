@@ -8,12 +8,7 @@ local insert = table.insert
 
 commandblock.name = "commandblock"
 commandblock.id = NPC_ID
-
-commandblock.test = function()
-  return "isCommandblock", function(x)
-    return (x == commandblock.name or x == commandblock.id)
-  end
-end
+commandblock.order = 0.78
 
 local TYPE_PULSE = 0
 local TYPE_REPEAT = 1

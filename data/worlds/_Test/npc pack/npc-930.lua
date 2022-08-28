@@ -161,7 +161,8 @@ function jewel.onTickEndNPC(n)
 end
 
 function jewel.onDrawNPC(n)
-  local data = n.data
+	local data = n.data
+	iniCheck(n)
   n.data.lightanimationframe = n.data.lightanimationframe + 1
   if n.data.lightanimationframe > config.lightningframespeed then
     n.data.lightanimationframe =  0

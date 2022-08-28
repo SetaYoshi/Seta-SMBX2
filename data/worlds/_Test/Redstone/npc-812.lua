@@ -5,15 +5,10 @@ local npcManager = require("npcManager")
 
 spyblock.name = "spyblock"
 spyblock.id = NPC_ID
-
-spyblock.test = function()
-  return "isSpyblock", function(x)
-    return (x == spyblock.id or x == spyblock.name)
-  end
-end
+spyblock.order = 0.48
 
 spyblock.onRedPower = function(n, c, power, dir, hitbox)
-  if redstone.isOperator(c.id) and power > 0 then
+  if redstone.is.operator(c.id) and power > 0 then
     n.data.isOn = true
     redstone.setEnergy(n, power)
   end

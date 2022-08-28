@@ -6,15 +6,10 @@ local npcutils = require("npcs/npcutils")
 
 absorber.name = "absorber"
 absorber.id = NPC_ID
-
-absorber.test = function()
-  return "isAbsorber", function(x)
-    return (x == absorber.name or x == absorber.id)
-  end
-end
+absorber.order = 0.32
 
 absorber.onRedPower = function(n, c, p, d, hitbox)
-	if redstone.isChip(c.id) or redstone.isBeamSource(c.id) then
+	if redstone.is.chip(c.id) or redstone.is.beamsource(c.id) then
 		redstone.setEnergy(n, p)
 	end
 end
@@ -35,21 +30,20 @@ absorber.config = npcManager.setNpcSettings({
 	framestyle = 0,
 	invisible = false,
 
-	score = 0,
-	jumphurt = true,
-	spinjumpsafe = false,
-	nohurt = true,
-	noyoshi=true,
-	grabside = false,
-	harmlessthrown=false,
-  noblockcollision = true,
-	noiceball=false,
-	nofireball=false,
 	nogravity = true,
+  notcointransformable = true,
+  noblockcollision = true,
+	jumphurt = true,
+	nohurt = true,
+	noyoshi = true,
+  blocknpc = true,
+  playerblock = true,
+  playerblocktop = true,
+  npcblock = true
 })
 npcManager.registerHarmTypes(absorber.id, {})
 
-local colorlist = {Color.white, Color.red..0.8, Color(1, 0.42, 0, 0.8), Color.purple..0.8, Color.purple..0.8}
+local colorlist = {Color.white, Color.red..0.8, Color(1, 0.42, 0, 0.8), Color.purple..0.8, Color.pink..0.8}
 
 function absorber.prime(n)
   local data = n.data

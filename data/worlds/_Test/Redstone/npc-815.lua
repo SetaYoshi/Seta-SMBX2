@@ -8,19 +8,13 @@ local split = string.split
 
 chest.name = "chest"
 chest.id = NPC_ID
+chest.order = 0.12
 
 local TYPE_NORMAL = 0
 local TYPE_BARREL = 1
 local TYPE_ENDER = 2
 
 local enderchestinvIDList = {0}
-
-
-chest.test = function()
-  return "isChest", function(x)
-    return (x == chest.id or x == chest.name)
-  end
-end
 
 chest.onRedPower = function(n, c, power, dir, hitbox)
   return true
@@ -74,6 +68,8 @@ chest.config = npcManager.setNpcSettings({
 
 local sfxbreak = Audio.SfxOpen(Misc.resolveFile("chest-break.ogg"))
 
+local inventoryList
+
 function chest.prime(n)
   local data = n.data
 
@@ -105,6 +101,10 @@ function chest.prime(n)
 
   data.redhitbox = redstone.basicDirectionalRedHitBox(n, 3)
   data.invspace = true
+end
+
+function chest.onRedLoad()
+  inventoryList = redstone.id.hopper
 end
 
 function chest.onRedTick(n)

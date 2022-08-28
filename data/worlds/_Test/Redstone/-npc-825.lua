@@ -5,12 +5,7 @@ local npcManager = require("npcManager")
 
 broadcaster.name = "broadcaster"
 broadcaster.id = NPC_ID
-
-broadcaster.test = function()
-  return "isBroadcaster", function(x)
-    return (x == broadcaster.id or x == broadcaster.name)
-  end
-end
+broadcaster.order = 0.12
 
 broadcaster.onRedPower = function(n, c, power, dir, hitbox)
   redstone.setEnergy(n, power)

@@ -8,12 +8,7 @@ local insert = table.insert
 
 source.name = "beamsource"
 source.id = NPC_ID
-
-source.test = function()
-  return "isBeamSource", function(x)
-    return (x == source.name or x == source.id)
-  end
-end
+source.order = 0.30
 
 local reset = false
 local rays = {}
@@ -59,6 +54,36 @@ source.config = npcManager.setNpcSettings({
   beamframespeed = 4,
 })
 npcManager.registerHarmTypes(npcID, {HARM_TYPE_JUMP, HARM_TYPE_SPINJUMP}, {[HARM_TYPE_JUMP] = 10, [HARM_TYPE_SPINJUMP] = 10})
+
+
+local function isTransparentNPC(n, dir)
+	return NPC.config[n.id].isTransparent or n.data.isTransparent
+end
+
+
+local function isTransparentBlock(b, dir)
+	if Block.config[b.id].isTransparent or b.data.isTransparent then
+		return true
+	end
+
+	if Block.PLAYER_MAP[b.id] then  -- Player filters are only transparent sometimes
+		local activeCharacters = {}
+		for k, p in ipairs(Player.get()) do
+			activeCharacters[p.character] = true
+		end
+		return activeCharacters[Block.config[b.id].playerfilter]
+	elseif (b.id == 1277 or b.id == 1278) then -- beat blocks
+		return Block.config[b.id].passthrough
+	elseif Block.SEMISOLID_MAP[b.id] and dir.y < 0 then -- All semisolids and sizables can only pass in one direction
+		return true
+	end
+end
+
+
+local function isTransparentPlayer(p, dir)
+	return p.deathTimer > 0
+end
+
 
 
 local ilightning = Graphics.loadImage(Misc.resolveFile("npc-"..source.id.."-1.png"))
@@ -142,15 +167,15 @@ function createray(start, r, color, x, blacklist, deathray, found)
   local npcList = Colliders.getColliding{a = lightcollider, b = NPC.ALL, btype = Colliders.NPC, filter = function(v)
     if v == blacklist then
       return false
-    elseif redstone.isDeadsickblock(v.id) then
+    elseif redstone.is.deadsickblock(v.id) then
       return deathray
-    elseif v.isHidden or redstone.transparentNPC(v, r) or (redstone.isReflector(v.id) and not v.data.isOn) then
+    elseif v.isHidden or isTransparentNPC(v, r) or (redstone.is.reflector(v.id) and not v.data.isOn) then
       return false
     end
     return true
   end}
   local blockList = Colliders.getColliding{a = lightcollider, b = Block.ALL, btype = Colliders.BLOCK, filter = function(v)
-    if v.isHidden or redstone.transparentBlock(v, r) then
+    if v.isHidden or isTransparentBlock(v, r) then
       return false
     end
     return true
@@ -161,7 +186,7 @@ function createray(start, r, color, x, blacklist, deathray, found)
   local collisionlist = {}
   for i = 1, #npcList do
     local npc = npcList[i]
-    if (redstone.isReflector(npc.id)) and npc.data.collision and npc.data.collision ~= blacklist then
+    if (redstone.is.reflector(npc.id)) and npc.data.collision and npc.data.collision ~= blacklist then
       insert(collisionlist, npc.data.collision)
     else
       insert(collisionlist, npc)
@@ -171,7 +196,7 @@ function createray(start, r, color, x, blacklist, deathray, found)
     insert(collisionlist, blockList[i])
   end
   for _, p in ipairs(Player.get()) do
-    if not redstone.transparentPlayer(p, r) then
+    if not isTransparentPlayer(p, r) then
       insert(collisionlist, p)
     end
   end
@@ -194,13 +219,29 @@ function createray(start, r, color, x, blacklist, deathray, found)
     elseif crashcollider.reflector then
       local newDirection = -2*(r .. normal)*normal + r
       createray(stop, newDirection, color, x - 1, crashcollider, deathray, found)
-    elseif redstone.isAbsorber(crashcollider.id) and (color == Color.white or crashcollider.data.color == Color.white or crashcollider.data.color == color) then
+    elseif redstone.is.absorber(crashcollider.id) and (color == Color.white or crashcollider.data.color == Color.white or crashcollider.data.color == color) then
       insert(found, crashcollider)
-    elseif redstone.isSickblock(crashcollider.id) and deathray then
+    elseif redstone.is.sickblock(crashcollider.id) and deathray then
       insert(found, crashcollider)
-    elseif redstone.isDeadsickblock(crashcollider.id) and deathray then
+    elseif redstone.is.deadsickblock(crashcollider.id) and deathray then
       insert(found, crashcollider)
       createray(stop, r, color, x - 1, crashcollider, deathray, found)
+    end
+  end
+end
+
+local transparentBlockList = table.map{658, 1282, 687, 1283, 1284, 1285, 1286, 1287, 1288, 1289, 1290, 1291, 690, 701, 702, 703, 704, 705, 706, 707, 708, 709, 710, 711, 712, 713, 714, 715, 716, 717, 718, 719, 720, 721, 722, 723, 1102, 1103, 1104, 1105, 1006, 1007}  -- Add here the IDs of the blocks you want to be transparent by default includes clear pipes, insisible blocks, npc filters, and player filters
+local transarentNPCList = table.map{208, 378, 412, 598, 599, 668, 669, 670, 671, 672, 673, 674}
+function source.onRedLoad()
+  for id = 1, NPC_MAX_ID do
+    if NPC.config[id].isTransparent == nil then
+      NPC.config[id]:setDefaultProperty("istransparent", not not transarentNPCList[id])
+    end
+  end
+
+	for id = 1, BLOCK_MAX_ID do
+    if Block.config[id].isTransparent == nil then
+      Block.config[id]:setDefaultProperty("istransparent", not not transparentBlockList[id])
     end
   end
 end

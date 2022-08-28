@@ -11,12 +11,7 @@ local split, trim = string.split, string.trim
 
 jewel.name = "jewel"
 jewel.id = NPC_ID
-
-jewel.test = function()
-  return "isJewel", function(x)
-    return (x == jewel.id or x == jewel.name)
-  end
-end
+jewel.order = 0.68
 
 jewel.config = npcManager.setNpcSettings({
 	id = jewel.id,

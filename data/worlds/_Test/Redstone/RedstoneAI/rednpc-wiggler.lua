@@ -1,22 +1,19 @@
-local npcAI = {}
-
 local redstone = require("redstone")
-local npcID = NPC_ID
 
 -- vv Customization vv
 
 -- List of NPCs ID this file will affect
-npcAI.wigglerList = {446, 448}
+local wigglerList = {446, 448}
 
 -- ^^ Customization ^^
 
 
-function npcAI.prime(n)
+local function prime(n)
   local data = n.data
   data.wasAngry = data._basegame.isAngry
 end
 
-function npcAI.onRedTick(n)
+local function onRedTick(n)
   local data = n.data
   data.observ = false
 
@@ -33,8 +30,10 @@ function npcAI.onRedTick(n)
   redstone.resetPower(n)
 end
 
-for _, v in ipairs(npcAI.wigglerList) do
-  redstone.registerNPC(v, npcAI)
+for _, id in ipairs(wigglerList) do
+  redstone.register({
+  id = id,
+  prime = prime,
+  onRedTick = onRedTick,
+})
 end
-
-return npcAI

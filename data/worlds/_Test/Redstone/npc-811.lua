@@ -7,12 +7,7 @@ local floor, ceil = math.floor, math.ceil
 
 redblock.name = "redblock"
 redblock.id = NPC_ID
-
-redblock.test = function()
-  return "isRedblock", function(x)
-    return (x == redblock.id or x == redblock.name)
-  end
-end
+redblock.order = 0.16
 
 local pswitch = false
 local TYPE_NORMAL = 0

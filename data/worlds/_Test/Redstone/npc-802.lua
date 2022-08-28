@@ -7,12 +7,7 @@ local floor = math.floor
 
 observer.name = "observer"
 observer.id = NPC_ID
-
-observer.test = function()
-  return "isObserver", function(x)
-    return (x == observer.id or x == observer.name)
-  end
-end
+observer.order = 1
 
 observer.onRedPower = function()
   return true

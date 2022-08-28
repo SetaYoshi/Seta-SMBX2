@@ -5,12 +5,7 @@ local npcManager = require("npcManager")
 
 hopper.name = "hopper"
 hopper.id = NPC_ID
-
-hopper.test = function()
-  return "isHopper", function(x)
-    return (x == hopper.id or x == hopper.name)
-  end
-end
+hopper.order = 0.14
 
 hopper.onRedPower = function(n, c, power, dir, hitbox)
   redstone.setEnergy(n, power)

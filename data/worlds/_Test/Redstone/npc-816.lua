@@ -5,12 +5,7 @@ local npcManager = require("npcManager")
 
 flamethrower.name = "flamethrower"
 flamethrower.id = NPC_ID
-
-flamethrower.test = function()
-  return "isFlamethrower", function(x)
-    return (x == flamethrower.name or x == flamethrower.id)
-  end
-end
+flamethrower.order = 0.60
 
 flamethrower.onRedPower = function(n, c, power, dir, hitbox)
   redstone.setEnergy(n, power)
@@ -51,6 +46,8 @@ flamethrower.config = npcManager.setNpcSettings({
   playerblocktop = true,
   npcblock = true,
 })
+local EXISTS_FLAME
+local iceBlock, iceBlock_MAP
 
 local sfxfire = 16
 
@@ -72,6 +69,14 @@ function flamethrower.prime(n)
   data.redhitbox = redstone.basicDirectionalRedHitBox(n, 3)
 end
 
+function flamethrower.onRedLoad()
+  EXISTS_FLAME = redstone.id.flame
+
+  if EXISTS_FLAME then
+    iceBlock, iceBlock_MAP = redstone.component.flame.iceBlock, redstone.component.flame.iceBlock_MAP
+  end
+end
+
 function flamethrower.onRedTick(n)
   if Defines.levelFreeze then return end
   redstone.setLayerLineguideSpeed(n)
@@ -81,12 +86,14 @@ function flamethrower.onRedTick(n)
 
   data.redarea.x, data.redarea.y = n.x - 2, n.y - 1
 
-  -- Melt any ice blocks that are in the way
-  local iceList = Colliders.getColliding{a = data.redarea, b = redstone.iceBlock_MAP, btype = Colliders.BLOCK, filter = function(b)
-    if not b.isHidden then
-      redstone.iceBlock[b.id](b, n)
-    end
-  end}
+  if EXISTS_FLAME then
+    -- Melt any ice blocks that are in the way
+    local iceList = Colliders.getColliding{a = data.redarea, b = iceBlock_MAP, btype = Colliders.BLOCK, filter = function(b)
+      if not b.isHidden then
+        iceBlock[b.id](b, n)
+      end
+    end}
+  end
 
   if data.power > 0 and data.powerPrev == 0 then
     data.invspace = true
@@ -102,17 +109,20 @@ function flamethrower.onRedTick(n)
       SFX.play(sfxfire)
     end
     local e = Animation.spawn(10, n.x + 0.5*n.width - 16, n.y + 0.5*n.height - 16)
-    local v = NPC.spawn(redstone.component.flame.id, n.x, n.y, n:mem(0x146, FIELD_WORD))
-    v.x = v.x + 0.5*(n.width - v.width)
-    v.y = v.y + 0.5*(n.height - v.height)
-    v.data.angle = data.angle
-    v.data.parent = n
-    v.data.immuneparent = true
-    redstone.component.flame.prime(v)
+
+    if EXISTS_FLAME then
+      local v = NPC.spawn(redstone.id.flame, n.x, n.y, n:mem(0x146, FIELD_WORD))
+      v.x = v.x + 0.5*(n.width - v.width)
+      v.y = v.y + 0.5*(n.height - v.height)
+      v.data.angle = data.angle
+      v.data.parent = n
+      v.data.immuneparent = true
+      redstone.component.flame.prime(v)
+    end
   end
 
   redstone.updateDirectionalRedHitBox(n, 3)
-  local passed = redstone.passInventory{source = n, npcList = redstone.component.hopper.id, inventory = data.angle, hitbox = data.redhitbox}
+  local passed = redstone.passInventory{source = n, npcList = redstone.id.hopper, inventory = data.angle, hitbox = data.redhitbox}
 
 
   redstone.resetPower(n)

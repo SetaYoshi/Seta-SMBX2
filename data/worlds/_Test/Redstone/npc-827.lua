@@ -5,12 +5,7 @@ local npcManager = require("npcManager")
 
 deadsickblock.name = "deadsickblock"
 deadsickblock.id = NPC_ID
-
-deadsickblock.test = function()
-  return "isDeadsickblock", function(x)
-    return (x == deadsickblock.id or x == deadsickblock.name)
-  end
-end
+deadsickblock.order = 0.6401
 
 local MODE_NORMAL = 0
 local MODE_ANGELIC = 1
@@ -20,7 +15,7 @@ deadsickblock.onRedPower = function(n, c, power, dir, hitbox)
     redstone.setEnergy(n, power)
     redstone.updateRedArea(n)
     redstone.updateRedHitBox(n)
-    redstone.passEnergy{source = n, power = 15, hitbox = n.data.redhitbox, area = n.data.redarea, npcList = {deadsickblock.id, redstone.component.reflector.id}, filter = function(v) return (v.data.mode == MODE_ANGELIC and v.data.power == 0 and c ~= v) or redstone.isReflector(v.id) end}
+    redstone.passEnergy{source = n, power = 15, hitbox = n.data.redhitbox, area = n.data.redarea, npcList = {deadsickblock.id, redstone.id.reflector}, filter = function(v) return (v.data.mode == MODE_ANGELIC and v.data.power == 0 and c ~= v) or redstone.is.reflector(v.id) end}
   else
     return true
   end
@@ -53,8 +48,12 @@ deadsickblock.config = npcManager.setNpcSettings({
   blocknpc = false,
   blocknpctop = false,
   playerblock = false,
-  playerblocktop = false
+  playerblocktop = false,
+
+  hasnosoul = false
 })
+
+local EXIST_SICKBLOCK
 
 local function revive(n)
   local data = n.data
@@ -65,17 +64,43 @@ local function revive(n)
   end
   data.isDead = false
   data.pistIgnore = false
-  n.id = redstone.component.sickblock.id
+
+  if EXIST_SICKBLOCK then
+    n.id = redstone.id.sickblock
+  else
+    n:kill()
+  end
 end
 
-deadsickblock.prime = redstone.component.sickblock.prime
+function deadsickblock.prime(n)
+  local data = n.data
+
+  data.animFrame = data.animFrame or 0
+  data.animTimer = data.animTimer or 0
+
+  data.frameX = data._settings.type or 0
+  data.frameY = data.frameY or 0
+
+  data.mode = data._settings.mode or 0
+  data.isDead = data.isDead or false
+  data.deathTimer = data.deathTimer or 0
+  data.immune = data.immune or false
+  data.immuneTimer = data.immuneTimer or 0
+
+  data.redarea = data.redarea or redstone.basicRedArea(n)
+  data.redhitbox = data.redhitbox or redstone.basicRedHitBox(n)
+end
+
+function deadsickblock.onRedLoad()
+  EXIST_SICKBLOCK = redstone.id.sickblock
+end
 
 function deadsickblock.onRedTick(n)
   local data = n.data
   data.observ = false
 
   if data.mode == MODE_ANGELIC and data.power == 0 and data.deathTimer == 0 then
-    data.deathTimer = redstone.component.sickblock.config.deathtimer + 1
+    data.deathTimer = (EXIST_SICKBLOCK and redstone.component.sickblock.config.deathtimer + 1) or 5
     data.observ = true
   end
 

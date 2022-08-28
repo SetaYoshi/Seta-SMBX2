@@ -1,20 +1,18 @@
-local npcAI = {}
+local redstone = require("redstone")
 
 -- vv Customization vv
 
 -- List of NPCs ID this file will affect
-npcAI.donutList = {46, 212}
+local donutList = {46, 212}
 
 -- ^^ Customization ^^
 
-local npcID = NPC_ID
-local redstone = require("redstone")
 
-function npcAI.onRedPower(n, c, power, dir, hitbox)
+local function onRedPower(n, c, power, dir, hitbox)
   redstone.setEnergy(n, power)
 end
 
-function npcAI.onRedTick(n)
+local function onRedTick(n)
   local data = n.data
   data.observ = false
 
@@ -31,8 +29,10 @@ function npcAI.onRedTick(n)
   redstone.resetPower(n)
 end
 
-for _, v in ipairs(npcAI.donutList) do
-  redstone.registerNPC(v, npcAI)
+for _, id in ipairs(donutList) do
+  redstone.register({
+    id = id,
+    onRedPower = onRedPower,
+    onRedTick = onRedTick,
+  })
 end
-
-return npcAI

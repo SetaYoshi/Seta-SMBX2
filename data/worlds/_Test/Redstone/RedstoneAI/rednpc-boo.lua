@@ -1,28 +1,25 @@
-local npcAI = {}
-
 local redstone = require("redstone")
-local npcID = NPC_ID
 
 -- vv Customization vv
 
 -- List of NPCs ID this file will affect
-npcAI.booList = {38, 43, 44}
+local booList = {38, 43, 44}
 
 -- ^^ Customization ^^
 
 
-function npcAI.onRedPower(n, c, power, dir, hitbox)
+function onRedPower(n, c, power, dir, hitbox)
   return true
 end
 
-function npcAI.prime(n)
+local function prime(n)
   local data = n.data
 
   data.redarea = data.redarea or redstone.basicRedArea(n)
   data.redhitbox = data.redhitbox or redstone.basicRedHitBox(n)
 end
 
-function npcAI.onRedTick(n)
+local function onRedTick(n)
   local data = n.data
   data.observ = false
 
@@ -39,8 +36,11 @@ function npcAI.onRedTick(n)
   data.prevAI = n.ai1
 end
 
-for _, v in ipairs(npcAI.booList) do
-  redstone.registerNPC(v, npcAI)
+for _, id in ipairs(booList) do
+  redstone.register({
+    id = id,
+    prime = prime,
+    onRedPower = onRedPower,
+    onRedTick = onRedTick,
+  })
 end
-
-return npcAI

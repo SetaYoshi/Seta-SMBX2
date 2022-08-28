@@ -7,12 +7,7 @@ local insert = table.insert
 
 piston.name = "piston"
 piston.id = NPC_ID
-
-piston.test = function()
-  return "isPiston", function(x)
-    return (x == piston.name or x == piston.id)
-  end
-end
+piston.order = 0.74
 
 piston.config = npcManager.setNpcSettings({
 	id = piston.id,
@@ -46,6 +41,54 @@ piston.config = npcManager.setNpcSettings({
   interval = 8,
   deadzone = 16
 })
+
+
+  -- ===============
+  -- === PISTONS ===
+  -- ===============
+
+  -- Determines if a block is immovable by a piston
+  local immovableblock = table.map({})
+  redstone.blockImmovable = function(b)
+    if immovableblock[b.id] then
+      return true
+    end
+  end
+
+  -- Determines if an NPC is immovable by a piston
+  redstone.npcImmovable = function(n)
+    if (n and n.data and n.data.pistImmovable) then
+      return true
+    end
+  end
+
+  -- Determines if a player is immovable by a piston
+  redstone.playerImmovable = function(p)
+    if p:mem(0x4A, FIELD_BOOL) then
+      return true
+    end
+  end
+
+  -- Determines if a block is intangible
+  local intangibleBlock = table.map(expandedDefines.BLOCK_SEMISOLID..expandedDefines.BLOCK_SIZEABLE..expandedDefines.BLOCK_NONSOLID)
+  redstone.blockIgnore = function(b)
+    if intangibleBlock[b.id] then
+      return true
+    end
+  end
+
+  -- Determines if an NPC is intangible
+  redstone.npcIgnore = function(n)
+    if (n and n.data and n.data.pistIgnore) or redstone.is.dust(n.id) or n:mem(0x12C, FIELD_WORD) ~= 0 then
+      return true
+    end
+  end
+
+  -- Determines if an player is intangible
+  redstone.playerIgnore = function(p)
+    return false
+  end
+
 
 local sfxextend = Audio.SfxOpen(Misc.resolveFile("piston-extend.ogg"))
 local sfxretract = Audio.SfxOpen(Misc.resolveFile("piston-retract.ogg"))
@@ -105,14 +148,14 @@ function piston.prime(n)
   data.animTimer = data.animTimer or 0
   data.powerTimer = data.powerTimer or 0
 
-  if not redstone.isPiston(n.id) then
-    if redstone.isPiston_ehor(n.id) then
+  if not redstone.is.piston(n.id) then
+    if redstone.is.piston_ehor(n.id) then
       if data.frameX == 0 then
         data.origframe = 0
       else
         data.origframe = 2
       end
-    elseif redstone.isPiston_ever(n.id) then
+    elseif redstone.is.piston_ever(n.id) then
       if data.frameX == 0 then
         data.origframe = 1
       else

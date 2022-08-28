@@ -5,15 +5,10 @@ local npcManager = require("npcManager")
 
 reciever.name = "reciever"
 reciever.id = NPC_ID
-
-reciever.test = function()
-  return "isReciever", function(x)
-    return (x == reciever.id or x == reciever.name)
-  end
-end
+reciever.order = 0.42
 
 reciever.onRedPower = function(n, c, power, dir, hitbox)
-  if redstone.isTransmitter(c.id) or redstone.isChip(c.id) then
+  if redstone.is.transmitter(c.id) or dir == -1 then
     redstone.setEnergy(n, power)
   end
 end

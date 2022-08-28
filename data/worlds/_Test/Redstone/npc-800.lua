@@ -7,12 +7,7 @@ local insert, iclone = table.insert, table.iclone
 
 dust.name = "dust"
 dust.id = NPC_ID
-
-dust.test = function()
-  return "isDust", function(x)
-    return (x == dust.id or x == dust.name)
-  end
-end
+dust.order = 0.76
 
 dust.config = npcManager.setNpcSettings({
 	id = dust.id,
@@ -39,7 +34,8 @@ dust.config = npcManager.setNpcSettings({
 
   basicdust = false,  -- A less laggy, but less accurate dust AI
   debug = false,      -- Debugs the power level of the NPC
-  automap = true    -- Automaps index 0 automatically
+  automap = false,    -- Automaps index 0 automatically
+	istransparent = true,
 })
 
 local dustMap = {}
@@ -59,6 +55,12 @@ dustMap["false true false false"] = 13
 dustMap["false false true false"] = 14
 dustMap["false false false true"] = 15
 dustMap["false false false false"] = 16
+
+local network = {}
+
+local function addNetwork()
+
+end
 
 local function foundDust(n, coll)
   local found = false
@@ -87,7 +89,6 @@ end
 
 local dustQueque = {}
 local dustRemain = {}
-
 
 -- Look guys, I tried my best here.
 local function instantpower(n)
@@ -183,7 +184,7 @@ if dust.config.basicdust then
 
 else
   dust.onRedPower = function(n, c, p, d, hitbox)
-    if not redstone.isDust(c.id) then
+    if not redstone.is.dust(c.id) then
       redstone.setEnergy(n, p)
       redstone.updateRedArea(n)
       redstone.updateRedHitBox(n)

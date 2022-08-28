@@ -5,12 +5,7 @@ local npcManager = require("npcManager")
 
 sickblock.name = "sickblock"
 sickblock.id = NPC_ID
-
-sickblock.test = function()
-  return "isSickblock", function(x)
-    return (x == sickblock.id or x == sickblock.name)
-  end
-end
+sickblock.order = 0.64
 
 local TYPE_NORMAL = 0
 local TYPE_MASKED = 1
@@ -21,7 +16,7 @@ local MODE_ANGELIC = 1
 local found = false
 sickblock.onRedPower = function(n, c, power, dir, hitbox)
   if n.data.frameX == TYPE_ASYMPTOMATIC then
-    n.data.immune = redstone.isSickblock(c.id)
+    n.data.immune = redstone.is.sickblock(c.id)
   end
 
   found = true
@@ -56,11 +51,18 @@ sickblock.config = npcManager.setNpcSettings({
   playerblocktop = true,
   npcblock = true,
 
+
+  hasnosoul = false,
   deathtimer = 4     -- Amount of frames it takes
 })
 
 local sfxpower = Audio.SfxOpen(Misc.resolveFile("sickblock-power.ogg"))
 local sfxdeath = Audio.SfxOpen(Misc.resolveFile("sickblock-death.ogg"))
+
+local infectionList
+
+local EXISTS_REAPER
+local EXISTS_DEADSICKBLOCK
 
 local function deadfilter(v)
   return not v.data.isDead and not v.data.immune
@@ -86,6 +88,13 @@ function sickblock.prime(n)
 end
 
 
+function sickblock.onRedLoad()
+  infectionList = redstone.id("sickblock", "reflector")
+
+  EXISTS_REAPER = redstone.id.reaper
+  EXISTS_DEADSICKBLOCK = redstone.id.deadsickblock
+end
+
 function sickblock.onRedTick(n)
   local data = n.data
   data.observ = false
@@ -97,7 +106,7 @@ function sickblock.onRedTick(n)
       if data.frameX ~= TYPE_MASKED then
         redstone.updateRedArea(n)
         redstone.updateRedHitBox(n)
-        redstone.passEnergy{source = n, power = 15, hitbox = data.redhitbox, area = data.redarea, npcList = {sickblock.id, redstone.component.reflector.id}, filter = deadfilter}
+        redstone.passEnergy{source = n, power = 15, hitbox = data.redhitbox, area = data.redarea, npcList = infectionList, filter = deadfilter}
       end
       if not found and redstone.onScreenSound(n) then
         SFX.play(sfxdeath)
@@ -110,14 +119,19 @@ function sickblock.onRedTick(n)
     if redstone.onScreenSound(n) then
       SFX.play(sfxpower)
     end
+
     data.observ = true
     data.isDead = true
     data.deathTimer = sickblock.config.deathtimer
+
     if not data.immune then
       data.pistIgnore = true
       n.friendly = true
     end
-    redstone.component.reaper.onPostNPCKill(n)
+
+    if EXISTS_REAPER then
+      redstone.component.reaper.onPostNPCKill(n)
+    end
   end
 
   if data.immuneTimer > 0 then
@@ -133,8 +147,12 @@ function sickblock.onRedTick(n)
         data.isDead = false
         data.immuneTimer = sickblock.config.deathtimer + 2
       else
-        data.frameY = data.mode
-        n.id = redstone.component.deadsickblock.id
+        if EXISTS_DEADSICKBLOCK then
+          data.frameY = data.mode
+          n.id = redstone.id.deadsickblock
+        else
+          n:kill()
+        end
       end
     else
       data.frameY = 2

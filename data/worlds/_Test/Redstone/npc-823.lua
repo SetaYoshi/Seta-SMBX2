@@ -8,12 +8,7 @@ local append = table.append
 
 flame.name = "flame"
 flame.id = NPC_ID
-
-flame.test = function()
-  return "isFlame", function(x)
-    return (x == flame.id or x == flame.name)
-  end
-end
+flame.order = 0.62
 
 flame.onRedPower = function(n, c, power, dir, hitbox)
   redstone.setEnergy(n, power)
@@ -52,6 +47,43 @@ flame.config = npcManager.setNpcSettings({
   firespeed = 4,  -- The speed of the fireball in pixel/frame
   bouncetype = 1  -- The different flame's AIs when colliding with a wall: 0: Bounce, 1: Destroy, 2: Pass-through
 })
+
+-- A table of block IDs and the "melting" behavior
+local iceBlock = {}
+
+-- Frozen coin block turns into a SMB3 coin
+iceBlock[620] = function(b, n)
+  NPC.spawn(10, b.x, b.y, n.section)
+  redstone.spawnEffect(10, b)
+  b:remove()
+end
+
+-- Frozen muncher block turns into a muncher
+iceBlock[621] = function(b, n)
+  b.id = 109
+  redstone.spawnEffect(10, b)
+end
+
+-- Ice block melts
+iceBlock[633] = function(b, n)
+  b:remove()
+  redstone.spawnEffect(10, b)
+end
+
+-- Large ice blocks takes two flame hits to melt
+iceBlock[634] = function(b, n)
+  if b.data.flame_metling then
+    b:remove()
+    redstone.spawnEffect(10, b)
+  else
+    b.data.flame_metling = true
+  end
+end
+
+-- List of ice blocks to scan
+local iceBlock_MAP = unmap(iceBlock)
+flame.iceBlock, flame.iceBlock_MAP = iceBlock, iceBlock_MAP
+
 
 local TYPE_BOUNCE = 0
 local TYPE_HIT = 1
@@ -129,6 +161,7 @@ local function doBounce(n)
   end
 end
 
+
 function flame.onRedTick(n)
   local data = n.data
 
@@ -143,10 +176,10 @@ function flame.onRedTick(n)
   data.redhitbox.x, data.redhitbox.y = cx, cy
 
   -- Melt any ice blocks that are in the way
-  local iceList = Colliders.getColliding{a = data.redhitbox, b = redstone.iceBlock_MAP, btype = Colliders.BLOCK, filter = redstone.nothidden}
+  local iceList = Colliders.getColliding{a = data.redhitbox, b = iceBlock_MAP, btype = Colliders.BLOCK, filter = redstone.nothidden}
   if iceList[1] then
     local b = iceList[1] -- Get the first block in the list
-    redstone.iceBlock[b.id](b, n) -- Do the given action of the block
+    iceBlock[b.id](b, n) -- Do the given action of the block
     n:kill()
   end
 

@@ -5,15 +5,10 @@ local npcManager = require("npcManager")
 
 block.name = "block"
 block.id = NPC_ID
-
-block.test = function()
-  return "isBlock", function(x)
-    return (x == block.id or x == block.name)
-  end
-end
+block.order = 0.24
 
 block.onRedPower = function(n, c, power, dir, hitbox)
-  if redstone.isOperator(c.id) or redstone.isAlternator(c.id) or redstone.isObserver(c.id) or redstone.isSpyblock(c.id) or redstone.isRepeater(c.id) or redstone.isCapacitor(c.id) or redstone.isLever(c.id) or redstone.isButton(c.id) or redstone.isReciever(c.id) or redstone.isReaper(c.id) or redstone.isChip(c.id) or (redstone.isTorch(c.id) and dir == 1) then
+  if redstone.is(c.id, "operator", "alternator", "observer", "spyblock", "repeater", "capacitor", "lever", "button", "reciever", "reaper", "chip") or (redstone.is.torch(c.id) and dir == 1) then
     redstone.setEnergy(n, power)
   else
     return true

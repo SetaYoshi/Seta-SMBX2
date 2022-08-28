@@ -9,12 +9,7 @@ local split = string.split
 
 lectern.name = "lectern"
 lectern.id = NPC_ID
-
-lectern.test = function()
-  return "isLectern", function(x)
-    return (x == lectern.id or x == lectern.name)
-  end
-end
+lectern.order = 0.70
 
 lectern.onRedPower = function(n, c, power, dir, hitbox)
   redstone.setEnergy(n, power)
@@ -113,7 +108,7 @@ function lectern.onRedTick(n)
   data.observpower = ceil(15*data.page/#data.pagetext)
 
   redstone.updateDirectionalRedHitBox(n, 3)
-  local passed = redstone.passInventory{source = n, npcList = redstone.component.hopper.id, inventory = data.page, hitbox = data.redhitbox}
+  local passed = redstone.passInventory{source = n, npcList = redstone.id.hopper, inventory = data.page, hitbox = data.redhitbox}
 
   if data.cooldown ~= 0 then
     data.cooldown = data.cooldown - 1

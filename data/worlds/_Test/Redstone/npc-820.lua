@@ -7,15 +7,15 @@ local floor = math.floor
 
 tnt.name = "tnt"
 tnt.id = NPC_ID
-
-tnt.test = function()
-  return "isTnt", function(x)
-    return (x == tnt.name or x == tnt.id)
-  end
-end
+tnt.order = 0.66
 
 tnt.onRedPower = function(n, c, power, dir, hitbox)
   redstone.setEnergy(n, power)
+end
+
+tnt.onDispense = function(n)
+  n.data.isFused = true
+  n.data.timer = tnt.config.explosiontimer
 end
 
 tnt.config = npcManager.setNpcSettings({
@@ -49,6 +49,58 @@ tnt.config = npcManager.setNpcSettings({
   explosiontimer = 130,  -- The time it takes for the bomb to explode
   destroyblock = false    -- If set to true, the explosion will destory blocks (when false, certain blocks like brick blocks still explode)
 })
+
+
+
+-- What should an NPC do when hit by an explosion
+local function tntNPCFilter(v)
+  return not v.isGenerator and not v.isHidden and not v.friendly and v:mem(0x124, FIELD_BOOL) and v.id ~= 13 and v.id ~= 291 and not NPC.config[v.id].isinteractable
+end
+
+local function onExplosionNPC(n, tnt)
+  if tntNPCFilter(n) then
+    n:harm(HARM_TYPE_NPC)
+  end
+
+  if redstone.is.sickblock(n.id) then
+    redstone.setEnergy(n, 15)
+  elseif not NPC.config[n.id].nogravity then
+    local t = vector.v2(n.x + 0.5*n.width - tnt.data.explosionhitbox.x, n.y + 0.5*n.height - tnt.data.explosionhitbox.y)
+    t = 6*t:normalise()
+    n.speedX, n.speedY = clamp(n.speedX + t.x, -8, 8), clamp(1.1*(n.speedY + t.y), -8, 8)
+  end
+end
+
+-- What should a block do when hit by an explosion
+local function onExplosionBlock(b, tnt)
+  if (Block.SOLID_MAP[b.id] or Block.SEMISOLID_MAP[b.id]) and not Block.SIZEABLE_MAP[b.id] then
+    if tnt.config.destroyblock then
+      b:remove(true)
+    else
+      if Block.config[b.id].smashable ~= 3 then
+        b:hit()
+      else
+        b:remove(true)
+      end
+    end
+  end
+end
+
+-- What should a player do when hit by an explosion
+local function onExplosionPlayer(p, tnt)
+  if not p:mem(0x4A, FIELD_BOOL) then -- In statue form
+    p:harm()
+    local t = vector.v2(p.x + 0.5*p.width - tnt.data.explosionhitbox.x, p.y + 0.5*p.height - tnt.data.explosionhitbox.y)
+    t = 8*t:normalise()
+    if p:isGroundTouching() and t.y < 0 then
+      p.y = p.y - 4
+      p:mem(0x146, FIELD_WORD, 0)
+    end
+    p.speedX, p.speedY = clamp(p.speedX + t.x, -12, 12), clamp(1.1*(p.speedY + t.y), -15, 15)
+  end
+end
+
+
 
 local TYPE_TNT = 0
 local TYPE_MINECART = 1
@@ -97,14 +149,14 @@ local function explode(n)
         end
       end
     end
-    redstone.explosionNPCAI(v, n)
+    onExplosionNPC(v, n)
   end
   for _, b in ipairs(Colliders.getColliding{a = data.explosionhitbox, b = Block.ALL, btype = Colliders.BLOCK, filter = function(v) return not v.isHidden end}) do
-    redstone.explosionBlockAI(b, n)
+    onExplosionBlock(b, n)
   end
   for _, p in ipairs(Player.get()) do
     if Colliders.collide(data.explosionhitbox, p) then
-      redstone.explosionPlayerAI(p, n)
+      onExplosionPlayer(p, n)
     end
   end
 

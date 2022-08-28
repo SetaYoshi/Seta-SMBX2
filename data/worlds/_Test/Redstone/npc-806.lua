@@ -5,12 +5,7 @@ local npcManager = require("npcManager")
 
 alternator.name = "alternator"
 alternator.id = NPC_ID
-
-alternator.test = function()
-  return "isAlternator", function(x)
-    return (x == alternator.id or x == alternator.name)
-  end
-end
+alternator.order = 0.34 
 
 local TYPE_ALTERNATOR = 0
 local TYPE_INVERTER = 1

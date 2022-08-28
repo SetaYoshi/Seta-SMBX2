@@ -132,8 +132,9 @@ end
 
 -- Images and lookups
 local iInputs = Graphics.loadImage(PATH.."inputs.png")
-local iIcons = Graphics.loadImage(PATH.."icons.png")
+local iCategories = Graphics.loadImage(PATH.."categories.png")
 local iStat = Graphics.loadImage(PATH.."stat.png")
+local iFavorite = Graphics.loadImage(PATH.."favorite.png")
 local textfont = textplus.loadFont("textplus/font/6.ini")
 
 local timerX = {0, 8, 400, 792}
@@ -147,6 +148,7 @@ local inputX = {0, 8, 376, 744}
 local inputXSplit = {0, 8, 176, 644}
 
 local finTypes = {
+  [0] = "Custom Game End",
   [1]  = "Roulette",
   [2]  = "? Orb",
   [3]  = "Keyhole",
@@ -156,7 +158,6 @@ local finTypes = {
   [7]  = "Goal Tape",
   [8]  = "Offscreen Exit",
   [9]  = "Warp Exit",
-	[10] = "Custom Game End"
 }
 
 local forcedTypes = {
@@ -181,6 +182,7 @@ local forcedTypes = {
 }
 
 -- Important things to keep track of
+local episodeName = mem(0xB2C624, FIELD_STRING)
 local forceExitWarp = 0
 local isFollowingSectionSplit = false
 local sectionSplit = 1
@@ -245,6 +247,12 @@ menu.aSelect = Audio.SfxOpen(PATH.."select.ogg")
 -- Inputs for the PBs menu
 local logtick = function(subdata)
 	local input = menu.input
+  if input.select.time == 1 or (input.select.time > 20 and input.select.time % 15 == 0) then
+    subdata.mode = subdata.mode + 1
+    if subdata.mode == 4 then subdata.mode = 1 end
+    SFX.play(menu.aScroll)
+  end
+
 	if input.up.time == 1 or (input.up.time > 20 and input.up.time % 15 == 0) then
 		subdata.suboption = subdata.suboption - 1
     SFX.play(menu.aScroll)
@@ -319,52 +327,80 @@ local function getBoxName(id)
 end
 
 local function textplusPBPrint(text, x, y)
-  textplus.print{text = text, x = x, y = y, xscale = 2, yscale = 2, plaintext = true, font = textfont, priority = 9.99}
+  textplus.print{text = text, x = x, y = 8 + 26*y, xscale = 2, yscale = 2, plaintext = true, font = textfont, priority = 9.99}
+end
+
+local PBModes = {"BEST", "RUNS", "SAVED"}
+
+local function renderLevelStats(logs, id, episodeMode)
+  local offset = 0
+  if episodeMode then offset = 1 end
+
+  local selection = logs[id]
+  local category = selection.category
+
+  local heading = selection.levelName
+  if #logs > 1 then heading = "["..id.."/"..#logs.."] "..heading end
+
+  local exitname = finTypes[category.type]
+  if category.section ~= -1 then exitname = exitname.." @"..category.section end
+
+  textplusPBPrint(heading,  8, 2 + offset*5)
+  if not episodeMode then
+    textplusPBPrint(getSMBXVersionString(selection.smbxversion), 8, 3)
+  end
+  textplusPBPrint(selection.date, 8, 4 + offset*4)
+  textplusPBPrint(exitname,       8, 5 + offset*4)
+
+  for k, v in ipairs({"powerup", "mult", "starcoin"}) do
+    local sourceX, sourceY = 16*(k - 1), 0
+    if category[v] then sourceY = 16 end
+    Graphics.draw{type = RTYPE_IMAGE, x = 8 + 18*(k - 1), y = 8 + 26*(6 + offset*4), priority = 9.99, image = iCategories, sourceX = sourceX, sourceY = sourceY, sourceWidth = 16, sourceHeight = 16}
+  end
+
+  textplusPBPrint(formatTime(selection.time).."  ["..selection.time.."]",       8, 7 + offset*4)
+  textplusPBPrint("Attempts:"..selection.attempts,                              8, 8 + offset*4)
+
+  for k, pstate in ipairs(selection.startstate) do
+    textplusPBPrint(getCharName(pstate.character).."\n"..getCostumeName(pstate.costume).."\n"..getPowName(pstate.powerup).."\n"..getMountName(pstate.mount, pstate.mountcolor).."\n"..getBoxName(pstate.reserveBox).."\n"..pstate.health, 36 + (k - 1)*300, 9 + offset*4)
+    for i = 1, 6 do
+      Graphics.draw{type = RTYPE_IMAGE, x = 16 + (k - 1)*300, y = 8 + 26*(9 + offset*4) + 18*(i - 1), priority = 9.99, image = iStat, sourceX = 16*(i - 1), sourceY = 0, sourceWidth = 16, sourceHeight = 16}
+    end
+  end
 end
 
 -- Render for PBs menu
 local logdraw = function(subdata)
+  local starSX = 0
+  if not actice then starSX = 32 end
+  Graphics.draw{type = RTYPE_IMAGE, x = 8, y = 8, priority = 9.99, image = iFavorite, sourceX = starSX, sourceWidth = 32}
+
+  for k, v in ipairs(PBModes) do
+    if k == subdata.mode then
+      textplusPBPrint(">"..v.."<", 108 + (k - 1)*200, 0)
+    else
+      textplusPBPrint(" "..v.." ", 108 + (k - 1)*200, 0)
+    end
+  end
+
   if #levelstat == 0 then
-    textplusPBPrint("No Records Found!", 8, 8)
-		return
-	end
+    textplusPBPrint("No Records Found!", 8, 2)
+    return
+  end
 
-	local selection = levelstat[subdata.suboption]
-	local category = selection.category
+  renderLevelStats(levelstat, subdata.suboption)
 
-	local heading = getSMBXVersionString(selection.smbxversion)
-	if #levelstat > 1 then heading = "("..subdata.suboption.."/"..#levelstat..") "..heading end
-
-	local exitname = finTypes[category.type]
-	if category.section ~= -1 then exitname = exitname.." @"..category.section end
-
-	textplusPBPrint("> "..heading,  8, 8 + 26*0)
-	textplusPBPrint(Level.name(),   8, 8 + 26*1)
-	textplusPBPrint(selection.date, 8, 8 + 26*2)
-	textplusPBPrint(exitname,       8, 8 + 26*3)
-
-	for k, v in ipairs({"powerup", "mult", "starcoin"}) do
-		local sourceX, sourceY = 16*(k - 1), 0
-		if category[v] then sourceY = 16 end
-		Graphics.draw{type = RTYPE_IMAGE, x = 8 + 18*(k - 1), y = 8 + (26*4), priority = 9.99, image = iIcons, sourceX = sourceX, sourceY = sourceY, sourceWidth = 16, sourceHeight = 16}
-	end
-
-	textplusPBPrint(formatTime(selection.time).."  ["..selection.time.."]",       8, 8 + 26*5)
-	textplusPBPrint("Attempts:"..selection.attempts,                              8, 8 + 26*6)
-
-	for k, pstate in ipairs(selection.startstate) do
-		textplusPBPrint(getCharName(pstate.character).."\n"..getCostumeName(pstate.costume).."\n"..getPowName(pstate.powerup).."\n"..getMountName(pstate.mount, pstate.mountcolor).."\n"..getBoxName(pstate.reserveBox).."\n"..pstate.health, 36 + (k - 1)*300, 8 + 26*8)
-		for i = 1, 6 do
-			Graphics.draw{type = RTYPE_IMAGE, x = 16 + (k - 1)*300, y = 8 + 26*8 + 18*(i - 1), priority = 9.99, image = iStat, sourceX = 16*(i - 1), sourceY = 0, sourceWidth = 16, sourceHeight = 16}
-		end
-	end
 end
 
 
 local function epitick(subdata)
   local input = menu.input
   local runs = worldstat.runs
-
+  if input.select.time == 1 or (input.select.time > 20 and input.select.time % 15 == 0) then
+    subdata.mode = subdata.mode + 1
+    if subdata.mode == 4 then subdata.mode = 1 end
+    SFX.play(menu.aScroll)
+  end
   if input.left.time == 1 or (input.left.time > 20 and input.left.time % 15 == 0) then
 		subdata.suboptionx = subdata.suboptionx - 1
     SFX.play(menu.aScroll)
@@ -400,55 +436,40 @@ local function epitick(subdata)
 end
 
 local function epidraw(subdata)
+  local starSX = 0
+  if not actice then starSX = 32 end
+  Graphics.draw{type = RTYPE_IMAGE, x = 8, y = 8, priority = 9.99, image = iFavorite, sourceX = starSX, sourceWidth = 32}
+
+  for k, v in ipairs(PBModes) do
+    if k == subdata.mode then
+      textplusPBPrint(">"..v.."<", 108 + (k - 1)*200, 0)
+    else
+      textplusPBPrint(" "..v.." ", 108 + (k - 1)*200, 0)
+    end
+  end
+
 	local run
 	if subdata.suboptionx == 1 then
 		run = worldstat.best
 		if not run then
-      textplusPBPrint("No Records Found!", 8, 8)
+      textplusPBPrint("No Records Found!", 8, 2)
 			return
 		end
 	else
 		run = worldstat.runs[subdata.suboptionx - 1]
 	end
 
-	local selection = run.log[subdata.suboptiony]
+  local selection = run.log[subdata.suboptiony]
 
-	local heading = getSMBXVersionString(run.smbxversion)
-	if subdata.suboptionx == 1 then heading = "(BEST) "..heading
-	else heading = "("..(subdata.suboptionx - 1).."/"..#worldstat.runs..") "..heading  end
-	textplusPBPrint("> "..heading,  8, 8 + 26*0)
+  local heading = run.episodeName
+  if #worldstat.runs > 1 then heading = "("..subdata.suboptionx.."/"..#worldstat.runs..") "..heading  end
+  textplusPBPrint(heading,  8, 2)
+  textplusPBPrint(getSMBXVersionString(run.smbxversion), 8 , 3)
+  textplusPBPrint(run.date, 8, 4)
+  textplusPBPrint(formatTime(run.time).."  ["..run.time.."]",       8, 5)
 
-	textplusPBPrint(formatTime(run.time).."  ["..run.time.."]",       8, 8 + 26*1)
-	textplusPBPrint(run.date, 8, 8 + 26*2)
-
-
-  if selection then
-    local category = selection.category
-    local exitname = finTypes[category.type]
-    if category.section ~= -1 then exitname = exitname.." @"..category.section end
-
-    textplusPBPrint("("..(subdata.suboptiony).."/"..#run.log..") "..selection.name,   8, 8 + 26*5)
-    textplusPBPrint(selection.date, 8, 8 + 26*6)
-    textplusPBPrint(exitname,       8, 8 + 26*7)
-
-    for k, v in ipairs({"powerup", "mult", "starcoin"}) do
-      local sourceX, sourceY = 16*(k - 1), 0
-      if category[v] then sourceY = 16 end
-      Graphics.draw{type = RTYPE_IMAGE, x = 8 + 18*(k - 1), y = 8 + (26*8), priority = 9.99, image = iIcons, sourceX = sourceX, sourceY = sourceY, sourceWidth = 16, sourceHeight = 16}
-    end
-
-    textplusPBPrint(formatTime(selection.time).."  ["..selection.time.."]",       8, 8 + 26*9)
-    textplusPBPrint("Attempts:"..selection.attempts,                              8, 8 + 26*10)
-
-    for k, pstate in ipairs(selection.startstate) do
-      textplusPBPrint(getCharName(pstate.character).."\n"..getCostumeName(pstate.costume).."\n"..getPowName(pstate.powerup).."\n"..getMountName(pstate.mount, pstate.mountcolor).."\n"..getBoxName(pstate.reserveBox).."\n"..pstate.health, 36 + (k - 1)*300, 8 + 26*11)
-      for i = 1, 6 do
-        Graphics.draw{type = RTYPE_IMAGE, x = 16 + (k - 1)*300, y = 8 + 26*11 + 18*(i - 1), priority = 9.99, image = iStat, sourceX = 16*(i - 1), sourceY = 0, sourceWidth = 16, sourceHeight = 16}
-      end
-    end
-  end
+  renderLevelStats(run.log, subdata.suboptiony, true)
 end
-
 local function sectionsplittable(max)
 	local t = {"HIDE"}
 	for i = 1, max do table.insert(t, tostring(i)) end
@@ -462,9 +483,9 @@ local function resetGame()
 end
 
 -- Register the menu
-menu.register{name = "Check Episode PB", type = "submenu", subdata = {suboptionx = 1, suboptiony = 1}, input = epitick, render = epidraw, levelBanned = true}
+menu.register{name = "Check Episode PB", type = "submenu", subdata = {suboptionx = 1, suboptiony = 1, mode = 1,}, input = epitick, render = epidraw, levelBanned = true}
 if not isOverworld then
-  menu.register{name = "Check Level PB", type = "submenu", subdata = {suboption = 1}, input = logtick, render = logdraw}
+  menu.register{name = "Check Level PB", type = "submenu", subdata = {suboption = 1, mode = 1}, input = logtick, render = logdraw}
 end
 
 menu.register{name = "Timer Mode", type = "list", var = "timerMode", list = {"Clock", "Frame", "Clock + Frame"}}
@@ -494,7 +515,7 @@ menu.register{name = "[AS] P2 Health", type = "list", var = "asHealth2", list = 
 
 -- Check if the episode or level has a custom finish
 local file = io.open(Misc.episodePath().."speedrun_custom_ending.lua", "r") -- r read mode
-if file then
+if file and not isOverworld then
   file:close()
 	customFinish = require("speedrun_custom_ending")
   if type(customFinish) == "string" then
@@ -517,7 +538,6 @@ local function sameTable(t1, t2)
   end
   return true
 end
-
 
 local function parseElem(v, form, size)
   local sizeDiff = size - #tostring(v)
@@ -654,7 +674,7 @@ local function timeFinish(finType, finSec)
 
 	-- Create run object
 	local category = {type = finType, section = finSec, powerup = catPowerup, mult = catMult, starcoin = catStarcoins}
-	local newLevelRun = {diff = levelWinTimeDiff, category = category, time = speeddata.timer, sectionsplit = logger.sectionsplit, date = os.date(), attempts = speeddata.attempt, smbxversion = SMBX_VERSION, startstate = speeddata.startState, name = Level.name()}
+	local newLevelRun = {diff = levelWinTimeDiff, category = category, time = speeddata.timer, sectionsplit = logger.sectionsplit, date = os.date(), attempts = speeddata.attempt, smbxversion = SMBX_VERSION, startstate = speeddata.startState, levelName = Level.name(), episodeName = episodeName}
 
 	-- Check if there is a run stored of the same category
 	local oldLevelRun, oldLevelRunKey
@@ -668,12 +688,9 @@ local function timeFinish(finType, finSec)
 	if oldLevelRun then levelWinTimeDiff = newLevelRun.time - oldLevelRun.time newLevelRun.diff = levelWinTimeDiff end
 
   hasLevelWon = true
-  if finType == 10 or finType == LEVEL_END_STATE_GAMEEND then
+  if finType == -1 or finType == LEVEL_END_STATE_GAMEEND then
     hasEpisodeWon = true
   end
-
-
-
 
   -- Show log
   displayPopout(finType, finSec)
@@ -693,7 +710,7 @@ local function timeFinish(finType, finSec)
 
     -- When the episode is beaten
     if hasEpisodeWon then
-      local newEpisodeRun = {time = speeddata.etimer, date = os.date(), smbxversion = SMBX_VERSION, log = speeddata.log}
+      local newEpisodeRun = {time = speeddata.etimer, date = os.date(), smbxversion = SMBX_VERSION, episodeName = episodeName, log = speeddata.log}
       local oldEpisodeRun = worldstat.best
 
       -- Get the time diff for an episode run
@@ -868,15 +885,15 @@ local function formatFin(obj, diff)
 	if diff < 0 then
 		obj.text = "<color rainbow>"..obj.text.."</color>"
 	elseif diff > 0 then
-		obj.color = Color.red
+		obj.color = Color.red*obj.color.a
 	else
-		obj.color = Color.gray
+		obj.color = Color.gray*obj.color.a
 	end
 
-	obj.text = obj.text.." <color white>"..sym..formatOut(diff).."</color>"
+	obj.text = obj.text.." <color "..tostring(Color.white*obj.color.a)..">"..sym..formatOut(diff).."</color>"
 end
 
-local pos = {vector(3, 9), vector(10, 2), vector(10, 16), vector(17, 9), vector(32, 16), vector(39, 9), vector(25, 9), vector(32, 2), vector(17, 16), vector(25, 16)}
+local pos = {vector(0, 8, 9, 8), vector(8, 0, 8, 9), vector(8, 15, 8, 9), vector(15, 8, 9, 8), vector(32, 14, 8, 8), vector(39, 8, 8, 8), vector(25, 7, 8, 8), vector(32, 0, 8, 8), vector(16, 17, 8, 6), vector(24, 17, 8, 6)}
 local function renderInputs(p, x, y)
   local opacity = 1
   if settings.transperent then opacity = 0.5 end
@@ -885,7 +902,7 @@ local function renderInputs(p, x, y)
     if p.rawKeys[v] then
       local sourceX = pos[k].x
       local sourceY = pos[k].y
-      Graphics.draw{image = iInputs, type = RTYPE_IMAGE, sourceX = sourceX + 48, sourceY = sourceY, sourceWidth = 6, sourceHeight = 6, x = x + sourceX, y = y + sourceY, priority = 9.9, opacity = opacity, priority = 9.99}
+      Graphics.draw{image = iInputs, type = RTYPE_IMAGE, sourceX = sourceX + 48, sourceY = sourceY, sourceWidth = pos[k].z, sourceHeight = pos[k].w, x = x + sourceX, y = y + sourceY, priority = 9.9, priority = 9.99}
     end
 	end
 end
@@ -970,28 +987,23 @@ function lib.onCameraDraw(idx)
 
 	-- Print timer (level and episode)
 	if settings.timerPosition > 1 and timerObj.text then
-		if hasLevelWon and levelWinTimeDiff then
-			formatFin(timerObj, levelWinTimeDiff)
-		end
-
-		local etimerObj
-	  if inEpisode then
-		  etimerObj = table.clone(timerObj)
-	  end
-
-		timerObj.color = timerObj.color*opacity
+    timerObj.color = timerObj.color*opacity
 
 		if inEpisode then
+      local etimerObj = table.clone(timerObj)
 			timerObj.y = timerObj.y - etimerObj.height*0.5
 			etimerObj.text = formatOut(speeddata.etimer)
 
 			if hasEpisodeWon and episodeWinTimeDiff then
-				formatFin(etimerObj, episodeWinTimeDiff)
+				formatFin(etimerObj, episodeWinTimeDiff, opacity)
 			end
 
-			etimerObj.color = etimerObj.color*opacity
 			textplus.print(etimerObj)
 		end
+
+    if hasLevelWon and levelWinTimeDiff then
+      formatFin(timerObj, levelWinTimeDiff, opacity)
+    end
 
     textplus.print(timerObj)
 	end
@@ -1001,7 +1013,7 @@ function lib.onCameraDraw(idx)
 		for k, v in ipairs({catPowerup, catMult, catStarcoins}) do
 			local xs, ys = 16*(k - 1), 0
 			if v then ys = 16 end
-			Graphics.draw{type = RTYPE_IMAGE, x = 16 + 18*(k - 1) - 4, y = 8 + 4, priority = 9.99, image = iIcons, sourceX = xs, sourceY = ys, sourceWidth = 16, sourceHeight = 16}
+			Graphics.draw{type = RTYPE_IMAGE, x = 16 + 18*(k - 1) - 4, y = 8 + 4, priority = 9.99, image = iCategories, sourceX = xs, sourceY = ys, sourceWidth = 16, sourceHeight = 16}
 		end
 	end
 
@@ -1025,10 +1037,11 @@ function lib.onCameraDraw(idx)
 				local v = speeddata.log[i]
 				local s = formatTime(v.time)
 				local d = formatTime(math.abs(v.diff or 0))
-				if v.diff and v.diff > 0 then d = "<color red>+"..d.."</color>"
+        local c = Color.white*opacity
+				if v.diff and v.diff > 0 then d = "<color "..tostring(Color.red*opacity)..">+"..d.."</color>"
 				elseif v.diff and v.diff < 0 then d = "<color rainbow>-"..d.."</color>"
 				else d = " "..d end
-				textplus.print{text = s.." "..d, x = 792, y = 8 + 10*i, pivot = {1, 0}, priority = 9.99, font = textfont, xscale = 1, yscale = 1}
+				textplus.print{text = s.." "..d, x = 792, y = 8 + 10*i, pivot = {1, 0}, priority = 9.99, font = textfont, xscale = 1, yscale = 1, color = c}
 			end
 		end
 	else
@@ -1055,7 +1068,7 @@ function lib.onCameraDraw(idx)
 			for k, v in ipairs({"powerup", "mult", "starcoin"}) do
 				local sourceX, sourceY = 16*(k - 1), 0
 				if selectedCat[v] then sourceY = 16 end
-				Graphics.draw{type = RTYPE_IMAGE, x = 800 - 6  - (3 - k + 1)*18, y = 8 + 10, priority = 9.99, image = iIcons, sourceX = sourceX, sourceY = sourceY, sourceWidth = 16, sourceHeight = 16, opacity = opacity}
+				Graphics.draw{type = RTYPE_IMAGE, x = 800 - 6  - (3 - k + 1)*18, y = 8 + 10, priority = 9.99, image = iCategories, sourceX = sourceX, sourceY = sourceY, sourceWidth = 16, sourceHeight = 16, opacity = opacity}
 			end
 
 			-- Print timers
@@ -1068,8 +1081,8 @@ function lib.onCameraDraw(idx)
 					if d < 0 then t = "<color rainbow>"..t.."</color>"
 					elseif d > 0 then splitColor = Color.red
 					else splitColor = Color.gray end
-					splitColor = splitColor*opacity
 				end
+        splitColor = splitColor*opacity
 
 				textplus.print{text = t, x = 800 - 8, y = 8 + 18+10 + 8 + (k - 1)*10, pivot = {1, 0}, priority = 9.99, font = textfont, color = splitColor}
 			end
@@ -1122,7 +1135,7 @@ end
 -- For when the episode has a custom end game
 function lib.onEvent(eventname)
   if customFinish[Level.filename()] == eventname then
-    timeFinish(10, player.section)
+    timeFinish(-1, player.section)
 	end
 end
 

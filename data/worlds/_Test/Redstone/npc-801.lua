@@ -5,15 +5,10 @@ local npcManager = require("npcManager")
 
 torch.name = "torch"
 torch.id = NPC_ID
-
-torch.test = function()
-  return "isTorch", function(x)
-    return (x == torch.id or x == torch.name)
-  end
-end
+torch.order = 0.26
 
 torch.onRedPower = function(n, c, power, dir, hitbox)
-  if (redstone.isBlock(c.id) and dir == 1) or redstone.isChip(c.id) then
+  if (redstone.is.block(c.id) and dir == 1) or dir == -1 then
     redstone.setEnergy(n, power)
   else
     return true

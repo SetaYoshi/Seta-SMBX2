@@ -48,7 +48,7 @@ local clamp = math.clamp
 local char, sub = string.char, string.sub
 
 local string_insert = function(str1, str2, pos)
-    return str1:sub(1, pos)..str2..str1:sub(pos+1)
+    return str1:sub(1, pos)..str2..str1:sub(pos + 1)
 end
 
 local string_remove = function(str, pos)
@@ -56,11 +56,7 @@ local string_remove = function(str, pos)
 end
 
 local function getCursorPos(scenecoords)
-  if scenecoords then
-    return cursor.scenepos
-  else
-    return cursor.screenpos
-  end
+  return (scenecoords and cursor.scenepos) or cursor.screenpos
 end
 
 
@@ -98,8 +94,7 @@ buffer.filter = bufferFilter_none
 --]]
 
 local function getPos(t)
-  if t.parent then return t.wposition end
-  return t.position
+  return (t.parent and t.wposition) or t.position
 end
 
 local mt = {}
@@ -170,11 +165,11 @@ local style_none_create = function(ui, args)
   -- Here you can alter properties of the ui and create variables for style support
 end
 
--- This function runs everytick. Can be used to create custom animation or specialized styling
+-- This function runs every tick. Can be used to create custom animation or specialized styling
 local style_none_tick = function(ui)
 end
 
--- This function draw the widget. This is the core part of a style
+-- This function draws the widget. This is the core part of a style
 local style_none_draw = function(ui)
 end
 

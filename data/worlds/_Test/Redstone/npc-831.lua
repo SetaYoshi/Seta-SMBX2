@@ -6,12 +6,7 @@ local repl = require("base/game/repl")
 
 chip.name = "chip"
 chip.id = NPC_ID
-
-chip.test = function()
-  return "isChip", function(x)
-    return (x == chip.id or x == chip.name)
-  end
-end
+chip.order = 0.10
 
 chip.onRedPower = function(n, c, power, dir, hitbox)
   return true

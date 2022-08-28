@@ -41,14 +41,14 @@ end
 
 function save.load()
   -- Open setting file
-  local file = io.open(save.path, "r")
+  local readfile = io.open(save.path, "r")
 
   -- If file is empty or not found, then use default data
-  if not file then save.data = save.default return end
+  if not readfile then save.data = save.default return end
 
   -- Read file and store contents
-  save.data = string2table(file:read("*all"))
-  file:close()
+  save.data = string2table(readfile:read("*all"))
+  readfile:close()
 
   -- Validate data, ensure every setting value is valid
   for k, v in pairs(save.default) do

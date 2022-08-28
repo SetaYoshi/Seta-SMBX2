@@ -1,4 +1,4 @@
-local npcAI = {}
+local redstone = require("redstone")
 
 -- vv Customization vv
 
@@ -6,15 +6,14 @@ local shellList = {5, 7, 73, 24, 172, 174, 113, 114, 115, 116}
 
 -- ^^ Customization ^^
 
-local npcID = NPC_ID
-local redstone = require("redstone")
 
-function npcAI.onDispense(n)
+local function onDispense(n)
   n.speedX = 7.1*n.direction
 end
 
-for _, v in ipairs(shellList) do
-  redstone.registerNPC(v, npcAI)
+for _, id in ipairs(shellList) do
+  redstone.register({
+    id = id,
+    onDispense = onDispense,
+  })
 end
-
-return npcAI

@@ -5,15 +5,10 @@ local npcManager = require("npcManager")
 
 dropper.name = "dropper"
 dropper.id = NPC_ID
+dropper.order = 0.58
 
 local TYPE_DROPPER = 0
 local TYPE_DISPENSER = 1
-
-dropper.test = function()
-  return "isDropper", function(x)
-    return (x == dropper.id or x == dropper.name)
-  end
-end
 
 dropper.onRedPower = function(n, c, power, dir, hitbox)
   redstone.setEnergy(n, power)
@@ -102,15 +97,15 @@ function dropper.onRedTick(n)
       v.direction = directionMap[data.frameX]
       redstone.spawnEffect(10, v)
 
-      if data.frameY == TYPE_DISPENSER and redstone.npcAI[v.id] and redstone.npcAI[v.id].onDispense then
-        redstone.npcAI[v.id].onDispense(v)
+      if data.frameY == TYPE_DISPENSER and redstone.comList[v.id] and redstone.comList[v.id].onDispense then
+        redstone.comList[v.id].onDispense(v)
       end
     end
 
     if redstone.onScreenSound(n) then
       SFX.play(sfxdrop)
     end
-    
+
     data.inv = 0
   end
 

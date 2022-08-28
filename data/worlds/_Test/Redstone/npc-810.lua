@@ -5,12 +5,7 @@ local npcManager = require("npcManager")
 
 button.name = "button"
 button.id = NPC_ID
-
-button.test = function()
-  return "isButton", function(x)
-    return (x == button.id or x == button.name)
-  end
-end
+button.order = 0.20
 
 button.onRedPower = function(n, c, power, dir, hitbox)
   return true

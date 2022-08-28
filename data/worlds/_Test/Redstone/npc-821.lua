@@ -8,15 +8,10 @@ local insert = table.insert
 
 transmitter.name = "transmitter"
 transmitter.id = NPC_ID
-
-transmitter.test = function()
-  return "isTransmitter", function(x)
-    return (x == transmitter.id or x == transmitter.name)
-  end
-end
+transmitter.order = 0.40
 
 transmitter.onRedPower = function(n, c, power, dir, hitbox)
-  if redstone.isReciever(c.id) and d == (n.data.frameX + 2)%4 then
+  if redstone.is.reciever(c.id) and d == (n.data.frameX + 2)%4 then
     return true
   end
   redstone.setEnergy(n, power)
@@ -49,10 +44,21 @@ transmitter.config = npcManager.setNpcSettings({
   playerblocktop = true,
   npcblock = true,
 
-  debug = false
+  debug = true,
+  effectid = 802,
 })
 
-local iwifi = Graphics.loadImage(Misc.resolveFile("npc-"..transmitter.id.."-1.png"))
+local interactions = {}
+local interactionsList = {}
+transmitter.interactions = interactions
+
+function transmitter.registerInteraction(id, t)
+  t.filter = t.filter or function() return true end
+
+  interactions[id] = t
+  table.insert(interactionsList, id)
+end
+local registerInteraction = transmitter.registerInteraction
 
 function transmitter.prime(n)
   local data = n.data
@@ -95,7 +101,7 @@ local function getInversePosition(n, point)
   end
 end
 
-local function debugdraw(start, stop)
+local function debugdraw(start, stop, power)
   local n = 2*((start - stop):normalize()):rotate(90)
   local z1, z2, z3, z4 = start + n, start - n, stop + n, stop - n
   Graphics.glDraw{vertexCoords = {z1.x, z1.y, z2.x, z2.y, z4.x, z4.y, z1.x, z1.y, z3.x, z3.y, z4.x, z4.y}, priority = 0, sceneCoords = true, color = Color.green}
@@ -131,84 +137,190 @@ findInRaycast = function(start, ray, power, blacklist, found, i)
   if i == 50 then return end -- just in case of infinite loop
 
   local maxRay = ray*power*32
+  local trueRay = maxRay
   local boundBox = fixCollider(Colliders.Box(start.x, start.y, maxRay.x, maxRay.y))  -- sometimes max ray may contain negative values
 
-  local redirectorList = {}
-  local recieverList = {}
+  local interactionList = Colliders.getColliding{a = boundBox, b = interactionsList, btype = Colliders.NPC, filter = function(v) return interactions[v.id].filter(v) and v ~= blacklist and not v.isHidden end} or {}
+  local recieverList = Colliders.getColliding{a = boundBox, b = redstone.id.reciever, btype = Colliders.NPC, filter = function(v) return not v.isHidden end}
 
-  local reflectorList = Colliders.getColliding{a = boundBox, b = redstone.component.reflector.id, btype = Colliders.NPC, filter = function(v) return v ~= blacklist and not v.isHidden and v.data.isOn end}
-  local redirectorList = Colliders.getColliding{a = boundBox, b = {redstone.component.repeater.id, redstone.component.absorber.id}, btype = Colliders.NPC, filter = function(v) return v ~= blacklist and not v.isHidden end}
-  local recieverList = Colliders.getColliding{a = boundBox, b = redstone.component.reciever.id, btype = Colliders.NPC, filter = function(v) return not v.isHidden end}
+  local interactionColls = {}
+  local foundInteractable = false
 
-  if reflectorList and reflectorList[1] then
-    for k, v in ipairs(reflectorList) do
-      insert(redirectorList, v.data.collision)
+  for k, v in ipairs(interactionList) do
+    local collFunc = interactions[v.id].collision
+    if collFunc then
+      insert(interactionColls, collFunc(v))
+    else
+      insert(interactionColls, v)
     end
   end
 
-
-  local redirectorData = {}
-  local closestBlockage = {npc = nil, dist = nil, stop = nil, normal = nil}
-
-  for k, v in ipairs(redirectorList) do
+  for k, v in ipairs(interactionColls) do
     local iscollision, point, normal, crashcollider = Colliders.raycast(start, maxRay, v)
-
     if iscollision then
       local d = (start - point).length
 
-      local ignoreThisOne = false
-      if redstone.isRepeater(crashcollider.id) then
-        local dir = getInversePosition(crashcollider, point)
-        if dir and dir ~= (crashcollider.data.frameX + 2)%4 then
-          ignoreThisOne = true
-        end
-      end
+      local id
+      if crashcollider.reflector then id = redstone.id.reflector else id = crashcollider.id end
 
-      if not ignoreThisOne and (not closestBlockage.dist or d < closestBlockage.dist) then
-        closestBlockage = {npc = crashcollider, dist = d, stop = point, normal = normal}
+      local isInteractable = interactions[id].canInteract(iscollision, point, normal, crashcollider)
+
+      if isInteractable and (not foundInteractable or d < foundInteractable.dist) then
+        foundInteractable = {npc = crashcollider, dist = d, stop = point, normal = normal}
       end
     end
   end
 
-  local noBlockage = not closestBlockage.stop
+  if foundInteractable then
+    trueRay = foundInteractable.dist*ray
+  end
 
   if transmitter.config.debug then
-    if noBlockage then
-      debugdraw(start, start + maxRay)
-    else
-      debugdraw(start, closestBlockage.stop)
-    end
+    debugdraw(start, start + trueRay, power)
   end
 
   for k, v in ipairs(recieverList) do
-    local iscollision, point, normal, crashcollider = Colliders.raycast(start, maxRay, v)
-
+    local iscollision, point, normal, crashcollider = Colliders.raycast(start, trueRay, v)
     if iscollision then
-      if noBlockage or (start - point).length < closestBlockage.dist then
-        local diff = getBlockDiff(start, point)
-        insert(found, {npc = crashcollider, power = ceil(power - diff)})
-      end
+      local diff = getBlockDiff(start, point)
+      insert(found, {npc = crashcollider, power = ceil(power - diff)})
     end
   end
 
 
-  if not noBlockage then
-    local npc = closestBlockage.npc
-    local stop = closestBlockage.stop
-    local normal = closestBlockage.normal
+  if foundInteractable then
+    local npc = foundInteractable.npc
+    local stop = foundInteractable.stop
+    local normal = foundInteractable.normal
+    local newPower = power - trueRay.length/32
 
-    if redstone.isRepeater(npc.id) then
-      Graphics.drawImageToSceneWP(iwifi, npc.x + 0.5*npc.width - iwifi.width*0.5, npc.y + 0.5*npc.height - iwifi.height*0.5, -44.9)
+    local id
+    if npc.reflector then id = redstone.id.reflector else id = npc.id end
+
+    interactions[id].action(npc, trueRay, start, stop, normal, newPower, found, i)
+  end
+end
+
+function transmitter.onRedLoad()
+  registerInteraction(redstone.id.repeater, {
+    ["canInteract"] = function(iscollision, point, normal, crashcollider)
+      local dir = getInversePosition(crashcollider, point)
+      return dir and dir == (crashcollider.data.frameX + 2)%4
+    end,
+
+    ["action"] = function(npc, ray, start, stop, normal, power, found, i)
+      if lunatime.tick()%Effect.config[transmitter.config.effectid][1].lifetime == 0 then
+        local e = Animation.spawn(transmitter.config.effectid, npc.x + 0.5*npc.width, npc.y)
+        e.x, e.y = e.x - e.width*0.5, e.y - e.height - 2
+      end
+
       local out = getOutputPosition(npc, npc.data.frameX)
       findInRaycast(out, vector(1, 0):rotate(dirToAngle[npc.data.frameX]), 15, npc, found, i)
-    elseif npc.reflector then
-      local newpath = -2*(ray .. normal)*normal + ray
-      local diff = getBlockDiff(start, stop)
-      findInRaycast(stop, newpath, power - diff, npc.reflector, found, i)
-    elseif redstone.isAbsorber(npc.id) then
-      return
-    end
-  end
+    end,
+  })
+
+  registerInteraction(redstone.id.capacitor, {
+    ["canInteract"] = function(iscollision, point, normal, crashcollider)
+      local dir = getInversePosition(crashcollider, point)
+      return dir and dir == (crashcollider.data.frameX + 2)%4
+    end,
+
+    ["action"] = function(npc, ray, start, stop, normal, power, found, i)
+      if lunatime.tick()%Effect.config[transmitter.config.effectid][1].lifetime == 0 then
+        local e = Animation.spawn(transmitter.config.effectid, npc.x + 0.5*npc.width, npc.y)
+        e.x, e.y = e.x - e.width*0.5, e.y - e.height - 2
+      end
+      local data = npc.data
+      local out = getOutputPosition(npc, npc.data.frameX)
+      findInRaycast(out, vector(1, 0):rotate(dirToAngle[npc.data.frameX]), data.capacitance/data.maxcapacitance*power, npc, found, i)
+    end,
+  })
+
+  registerInteraction(redstone.id.alternator, {
+    ["canInteract"] = function(iscollision, point, normal, crashcollider)
+      local dir = getInversePosition(crashcollider, point)
+      if crashcollider.data.type == 0 then
+        return dir and 1 - dir%2 == crashcollider.data.frameX
+      else
+        return dir and dir%2 == crashcollider.data.frameX
+      end
+    end,
+
+    ["action"] = function(npc, ray, start, stop, normal, power, found, i)
+
+      local dir = getInversePosition(npc, stop)
+      if npc.data.type == 0 then
+        if lunatime.tick()%Effect.config[transmitter.config.effectid][1].lifetime == 0 then
+          local e = Animation.spawn(transmitter.config.effectid, npc.x + 0.5*npc.width, npc.y)
+          e.x, e.y = e.x - e.width*0.5, e.y - e.height - 2
+        end
+
+        local dir = npc.data.frameX + npc.data.facing + 1
+        local out = getOutputPosition(npc, dir)
+        findInRaycast(out, vector(1, 0):rotate(dirToAngle[dir]), power, npc, found, i)
+      elseif  dir == npc.data.frameX + 1 + npc.data.facing then
+        if lunatime.tick()%Effect.config[transmitter.config.effectid][1].lifetime == 0 then
+          local e = Animation.spawn(transmitter.config.effectid, npc.x + 0.5*npc.width, npc.y)
+          e.x, e.y = e.x - e.width*0.5, e.y - e.height - 2
+        end
+
+        local dir = 2 - npc.data.frameX
+        local out1 = getOutputPosition(npc, dir + 1)
+        local out2 = getOutputPosition(npc, dir - 1)
+        findInRaycast(out1, vector(1, 0):rotate(dirToAngle[dir + 1]), power, npc, found, i)
+        findInRaycast(out2, vector(1, 0):rotate(dirToAngle[dir - 1]), power, npc, found, i)
+      end
+    end,
+  })
+
+  registerInteraction(redstone.id.fuse, {
+    ["canInteract"] = function(iscollision, point, normal, crashcollider)
+      local dir = getInversePosition(crashcollider, point)
+      return dir and (dir == (crashcollider.data.frameX)%4 or dir == (crashcollider.data.frameX + 2)%4)
+    end,
+
+    ["action"] = function(npc, ray, start, stop, normal, power, found, i)
+      if not npc.data.broken then
+        if lunatime.tick()%Effect.config[transmitter.config.effectid][1].lifetime == 0 then
+          local e = Animation.spawn(transmitter.config.effectid, npc.x + 0.5*npc.width, npc.y)
+          e.x, e.y = e.x - e.width*0.5, e.y - e.height - 2
+        end
+
+        local out = getOutputPosition(npc, npc.data.frameX)
+        findInRaycast(out, vector(1, 0):rotate(dirToAngle[npc.data.frameX]), power, npc, found, i)
+      end
+    end,
+  })
+
+  registerInteraction(redstone.id.absorber, {
+    ["canInteract"] = function()
+      return true
+    end,
+
+    ["action"] = function()
+    end,
+  })
+
+  registerInteraction(redstone.id.reflector, {
+    ["filter"] = function(n)
+      return n.data.isOn
+    end,
+
+    ["collision"] = function(n)
+      return n.data.collision
+    end,
+
+    ["canInteract"] = function()
+      return true
+    end,
+
+    ["action"] = function(npc, ray, start, stop, normal, power, found, i)
+      local dir = ray:normalize()
+      local newpath = -2*(dir .. normal)*normal + dir
+
+      findInRaycast(stop, newpath, power, npc.reflector, found, i)
+    end,
+  })
 end
 
 

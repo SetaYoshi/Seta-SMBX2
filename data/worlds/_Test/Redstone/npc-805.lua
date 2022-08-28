@@ -5,12 +5,7 @@ local npcManager = require("npcManager")
 
 repeater.name = "repeater"
 repeater.id = NPC_ID
-
-repeater.test = function()
-  return "isRepeater", function(x)
-    return (x == repeater.id or x == repeater.name)
-  end
-end
+repeater.order = 0.36
 
 repeater.onRedPower = function(n, c, power, dir, hitbox)
   local data = n.data

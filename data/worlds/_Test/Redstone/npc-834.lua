@@ -5,12 +5,7 @@ local npcManager = require("npcManager")
 
 door.name = "reddoor"
 door.id = NPC_ID
-
-door.test = function()
-  return "isRedDoor", function(x)
-    return (x == door.id or x == door.name)
-  end
-end
+door.order = 0.72
 
 door.onRedPower = function(n, c, power, dir, hitbox)
   redstone.setEnergy(n, power)

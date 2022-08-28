@@ -2,20 +2,14 @@ local reaper = {}
 
 local redstone = require("redstone")
 local npcManager = require("npcManager")
-
 local insert, remove = table.insert, table.remove
 
 reaper.name = "reaper"
 reaper.id = NPC_ID
-
-reaper.test = function()
-  return "isReaper", function(x)
-    return (x == reaper.id or x == reaper.name)
-  end
-end
+reaper.order = 0.46
 
 reaper.onRedPower = function(n, c, power, dir, hitbox)
-  if redstone.isOperator(c.id) and dir == (n.data.frameX + 2)%4 then
+  if redstone.is.operator(c.id) and redstone.component.operator.operations[reaper.id] and dir == (n.data.frameX + 2)%4 then
     n.data.isOn = true
     redstone.setEnergy(n, power)
   else
@@ -61,14 +55,12 @@ local sfxeatfast = Audio.SfxOpen(Misc.resolveFile("reaperblock-consumefast.ogg")
 local ribbontail = Misc.resolveFile("npc-"..reaper.id.."-ribbon.ini")
 local ribbonlist = {}
 
-local function hasSoul(n, soulNPC)
-  local data = n.data
-  if data.whitelist then return data.whitelist[soulNPC.id] end
-  return redstone.hasSoul(soulNPC)
-end
-
-local function canKill(soulNPC)
-  return redstone.hasSoul(soulNPC)
+local function hasSoul(soulNPC, reaperNPC)
+  if reaperNPC then
+    local data = reaperNPC.data
+    if data.whitelist then return data.whitelist[soulNPC.id] end
+  end
+  return not (NPC.config[soulNPC.id].hasNoSoul or soulNPC.data.hasNoSoul)
 end
 
 local function exposeSoul(n, soulNPC, dist)
@@ -106,7 +98,7 @@ end
 local function scanNPC(n)
   local x, y, w, h = collisionBox(n, n.data.frameX)
   for _, v in ipairs(NPC.getIntersecting(x, y, x + w, y + h)) do
-    if v.isValid and not v.isHidden and canKill(v) then
+    if v.isValid and not v.isHidden and hasSoul(v) then
       redstone.spawnEffect(10, v)
       v:kill()
     end
@@ -159,6 +151,14 @@ function reaper.prime(n)
   data.whitelist = data.whitelist or redstone.parseList(data._settings.whitelist)
 
   data.redhitbox = redstone.basicDirectionalRedHitBox(n, (data.frameX + 2)%4)
+end
+
+function reaper.onRedLoad()
+  for id = 1, NPC_MAX_ID do
+    if NPC.config[id].hasnosoul == nil then
+      NPC.config[id]:setDefaultProperty("hasnosoul", not NPC.HITTABLE_MAP[id])
+    end
+  end
 end
 
 function reaper.onRedTick(n)
@@ -242,7 +242,7 @@ function reaper.onPostNPCKill(soulNPC, reason)
     local reaperNPC
     for _, v in ipairs(list) do
       local dist = (v.x + 0.5*v.width - soulNPC.x - 0.5*soulNPC.width)^2 + (v.y + 0.5*v.height - soulNPC.y - 0.5*soulNPC.height)^2
-      if (closest == -1 or dist < closest) and hasSoul(v, soulNPC) then
+      if (closest == -1 or dist < closest) and hasSoul(soulNPC, v) then
         closest = dist
         reaperNPC = v
       end

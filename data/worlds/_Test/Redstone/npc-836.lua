@@ -7,15 +7,10 @@ local utils = require("npcs/npcutils")
 
 reflector.name = "reflector"
 reflector.id = NPC_ID
-
-reflector.test = function()
-  return "isReflector", function(x)
-    return (x == reflector.name or x == reflector.id)
-  end
-end
+reflector.order = 0.28
 
 reflector.onRedPower = function(n, c, power, dir, hitbox)
-  if redstone.isSickblock(c.id) or redstone.isDeadsickblock(c.id) then
+  if redstone.is.sickblock(c.id) or redstone.is.deadsickblock(c.id) then
     n.data.isOn = false
     n.data.deadTimer = 4
     n.data.frameY = 1

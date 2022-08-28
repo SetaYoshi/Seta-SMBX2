@@ -5,12 +5,7 @@ local npcManager = require("npcManager")
 
 note.name = "note"
 note.id = NPC_ID
-
-note.test = function()
-  return "isNote", function(x)
-    return (x == note.id or x == note.name)
-  end
-end
+note.order = 0.5401
 
 note.onRedPower = function(n, c, power, dir, hitbox)
   return true

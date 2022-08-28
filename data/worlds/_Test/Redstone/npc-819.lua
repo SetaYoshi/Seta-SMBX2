@@ -6,12 +6,7 @@ local expandedDefines = require("expandedDefines")
 
 piston_ever.name = "piston_ever"
 piston_ever.id = NPC_ID
-
-piston_ever.test = function()
-  return "isPiston_ever", function(x)
-    return (x == piston_ever.name or x == piston_ever.id)
-  end
-end
+piston_ever.order = 0.7401
 
 piston_ever.onRedPower = function(n, c, p, d, hitbox)
   local px, py, pw, ph = n.x, n.y, n.width, redstone.component.piston.config.height
